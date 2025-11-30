@@ -1,9 +1,10 @@
 # Qwen 结构化提取服务
-# v1.4 - 使用阿里云通义千问 API 将语音识别文本转换为采购清单 JSON
+# v1.5 - 使用阿里云通义千问 API 将语音识别文本转换为采购清单 JSON
 # v1.1: 优化 specification 字段格式，使用斜杠分隔包装规格（用于最小单位计算）
 # v1.2: 精简 prompt，移除方言处理（由讯飞 ASR 处理）
 # v1.3: 移除 Mock 模式，API 错误时抛出异常
 # v1.4: 延迟凭证验证，避免应用启动崩溃
+# v1.5: 添加 unitPrice 语义说明注释
 # 替代 Gemini 的中国本土化方案，使用 OpenAI 兼容接口
 
 import os
@@ -24,6 +25,14 @@ class QwenExtractorService:
 
     # 提取提示词模板 (精简版)
     # 注意: JSON 中的花括号需要双写 {{ }} 以转义 Python str.format()
+    #
+    # 【unitPrice 语义说明】
+    # unitPrice 始终表示「采购单位」的价格，即 specification 中的分母单位：
+    # - specification="24瓶/箱", unit="箱" → unitPrice 是每箱价格（如 28元/箱）
+    # - specification="500ml/瓶", unit="瓶" → unitPrice 是每瓶价格（如 5元/瓶）
+    # - specification="5L/桶", unit="桶" → unitPrice 是每桶价格（如 80元/桶）
+    # 计算：total = quantity × unitPrice（基于采购单位，非最小单位）
+    #
     EXTRACTION_PROMPT = """将采购语音转为JSON。输出格式：
 {{"supplier":"供应商","notes":"备注","items":[{{"name":"商品名","specification":"规格","quantity":数量,"unit":"单位","unitPrice":单价,"total":小计}}]}}
 

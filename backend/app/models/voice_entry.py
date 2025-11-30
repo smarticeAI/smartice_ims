@@ -1,5 +1,6 @@
 # 语音录入数据模型
-# v1.0 - 定义采购清单的 JSON Schema，与前端 EntryForm 表单结构对应
+# v1.1 - 定义采购清单的 JSON Schema，与前端 EntryForm 表单结构对应
+# v1.1: 添加 unitPrice 语义说明（采购单位价格）
 
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -10,13 +11,21 @@ class ProcurementItem(BaseModel):
     """
     采购物品 - 对应前端 ProcurementItem 类型
     与 EntryForm.tsx 中的物品清单字段一一对应
+
+    【unitPrice 语义说明】
+    unitPrice 始终表示「采购单位」的价格，即 specification 中的分母单位：
+    - specification="24瓶/箱", unit="箱" → unitPrice 是每箱价格
+    - specification="500ml/瓶", unit="瓶" → unitPrice 是每瓶价格
+    - specification="5L/桶", unit="桶" → unitPrice 是每桶价格
+
+    计算公式：total = quantity × unitPrice（基于采购单位）
     """
     name: str = Field(..., description="商品名称")
-    specification: str = Field(default="", description="包装规格")
-    quantity: float = Field(..., description="数量")
-    unit: str = Field(..., description="单位 (斤/公斤/箱/袋/桶/瓶等)")
-    unitPrice: float = Field(..., description="单价")
-    total: float = Field(..., description="小计 = 数量 × 单价")
+    specification: str = Field(default="", description="包装规格，格式：最小单位/采购单位（如 24瓶/箱、500ml/瓶）")
+    quantity: float = Field(..., description="数量（采购单位数量）")
+    unit: str = Field(..., description="采购单位 (斤/公斤/箱/袋/桶/瓶等)")
+    unitPrice: float = Field(..., description="采购单位价格（对应 unit 字段，非最小单位价格）")
+    total: float = Field(..., description="小计 = quantity × unitPrice")
 
 
 class VoiceEntryResult(BaseModel):
