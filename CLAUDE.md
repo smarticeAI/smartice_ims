@@ -36,8 +36,8 @@ InventoryEntryOfSmartICE/
 | **前端** | React 19 + Vite 6 | TypeScript, Tailwind CSS v4 |
 | **后端** | FastAPI + Python 3.11 | uv 包管理 |
 | **语音识别** | 讯飞 ASR | WebSocket 实时流式 |
-| **AI 图像** | Google Gemini | 采购清单图片识别 |
-| **AI 结构化** | Google Gemini | 语音文本 → JSON 提取 |
+| **AI 结构化** | 阿里云 Qwen | 语音文本 → JSON 提取 |
+| **任务队列** | Redis | 可选，支持限流 |
 
 ---
 
@@ -46,9 +46,9 @@ InventoryEntryOfSmartICE/
 | 功能 | 说明 | 状态 |
 |------|------|------|
 | 采购清单录入 | 手动填写表单 | 已完成 |
-| AI 图片识别 | 拍照/上传 → 自动填充 | 已完成 |
 | 语音录入 | 实时语音 → 结构化数据 | 已完成 |
 | 仪表板 | 数据概览与图表 | 已完成 |
+| AI 图片识别 | 拍照/上传 → 自动填充 | 暂停（待后端API） |
 
 ---
 
@@ -74,16 +74,21 @@ uv run uvicorn app.main:app --reload --port 8000
 ### 环境变量
 
 **backend/.env**:
-```
+```bash
 XUNFEI_APP_ID=xxx
 XUNFEI_API_KEY=xxx
-GEMINI_API_KEY=xxx
+XUNFEI_API_SECRET=xxx
+QWEN_API_KEY=xxx              # 通义千问
+REDIS_URL=redis://localhost:6379/0  # 可选
+CORS_ORIGINS=https://your-domain.com  # 生产环境
 ```
 
 **frontend/.env** (可选):
+```bash
+VITE_VOICE_BACKEND_URL=http://localhost:8000
 ```
-GEMINI_API_KEY=xxx   # 图片识别
-```
+
+**注意**：前端不存储 API Key，所有 AI 服务通过后端调用
 
 ---
 
@@ -94,6 +99,8 @@ GEMINI_API_KEY=xxx   # 图片识别
 | `/api/voice/ws` | WebSocket | 实时语音录入 |
 | `/api/voice/extract` | POST | 文本 → JSON |
 | `/api/voice/transcribe` | POST | 音频文件识别 |
+| `/api/voice/health` | GET | 服务健康检查 |
+| `/api/voice/queue/stats` | GET | 队列统计信息 |
 
 ---
 

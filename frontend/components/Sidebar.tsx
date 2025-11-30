@@ -14,7 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
     { id: AppView.DASHBOARD, label: '工作台', icon: Icons.ChartBar },
     { id: AppView.NEW_ENTRY, label: '开始录入', icon: Icons.PlusCircle },
     { id: AppView.HISTORY, label: '历史记录', icon: Icons.Clock },
-    { id: AppView.DESIGN_ASSISTANT, label: '设计助手', icon: Icons.Sparkles },
+    // 设计助手已移除 - 前后端分离重构
   ];
 
   return (
