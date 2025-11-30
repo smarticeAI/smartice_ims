@@ -7,8 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
-# 加载环境变量
-load_dotenv()
+# 加载环境变量 (override=True 确保 .env 文件优先于系统环境变量)
+load_dotenv(override=True)
 
 # 创建 FastAPI 应用
 app = FastAPI(

@@ -144,6 +144,48 @@ uv run uvicorn app.main:app --reload --port 8000
 
 ---
 
+## 常见问题与经验
+
+### 1. Gemini API 429 错误排查
+
+**症状**：Gemini 提取返回空 items，fallback 到 mock 模式
+
+**排查步骤**：
+1. 检查后端日志是否有 `ResourceExhausted: 429` 错误
+2. 直接用 curl 测试 API Key 是否有效：
+   ```bash
+   curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=YOUR_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"contents":[{"parts":[{"text":"Hello"}]}]}'
+   ```
+
+**常见原因**：
+- **系统环境变量覆盖**：`load_dotenv()` 默认不覆盖已存在的环境变量
+  - 解决：使用 `load_dotenv(override=True)`
+- **API Key 配额超限**：免费版每分钟 15 次请求限制
+  - 解决：等待配额刷新 / 使用其他账号 Key
+- **同账号多 Key 共享配额**：同一 Google 账号的所有 Key 共享配额
+
+**验证环境变量**：
+```bash
+# 检查系统环境变量
+echo $GEMINI_API_KEY
+
+# 检查 .env 文件
+cat .env | grep GEMINI
+```
+
+### 2. Mock 模式触发条件
+
+当以下情况发生时，自动 fallback 到 mock 模式：
+- `GEMINI_API_KEY` 未配置
+- API 调用失败（429/网络错误等）
+- JSON 解析失败
+
+Mock 模式仅对包含特定关键词（"五花肉"、"土豆"）的文本返回预设数据。
+
+---
+
 ## 关联项目
 
 - 根目录: `../CLAUDE.md` (Monorepo 总览)
