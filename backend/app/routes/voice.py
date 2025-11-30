@@ -1,9 +1,10 @@
 # 语音录入 API 路由
-# v2.4 - 实时流式语音识别 WebSocket + REST 备用接口
+# v2.5 - 实时流式语音识别 WebSocket + REST 备用接口
 # v2.1: 支持连续录音会话，收到识别结果后不关闭 WebSocket
 # v2.2: 添加 stop_recording 信号，通知前端停止发送音频
 # v2.3: 切换到 Qwen (通义千问) 替代 Gemini 作为结构化提取服务
 # v2.4: 添加文件上传验证 (大小限制、格式检查)
+# v2.5: 添加 Redis 队列状态端点
 # 支持 WebM -> PCM 音频格式转换，实时返回部分识别结果
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException
@@ -21,6 +22,8 @@ from app.models.voice_entry import VoiceEntryResult, VoiceMessage, ASRStatus
 from app.services.xunfei_asr import xunfei_asr
 # v2.3: 切换到 Qwen (通义千问) 作为结构化提取服务
 from app.services.qwen_extractor import qwen_extractor
+# v2.5: 添加队列服务
+from app.services.queue_service import queue_service
 
 
 async def convert_audio_to_pcm(audio_data: bytes, input_format: str = "webm") -> bytes:
@@ -323,6 +326,7 @@ async def health_check():
     """
     xunfei_status = "available" if xunfei_asr.available else "not_configured"
     qwen_status = "available" if qwen_extractor.available else "not_configured"
+    queue_stats = await queue_service.get_queue_stats()
 
     # 整体状态: 两个服务都可用才算 ok
     overall_status = "ok" if (xunfei_asr.available and qwen_extractor.available) else "degraded"
@@ -332,5 +336,20 @@ async def health_check():
         "services": {
             "xunfei_asr": xunfei_status,
             "qwen_extractor": qwen_status
-        }
+        },
+        "queue": queue_stats
     }
+
+
+@router.get("/queue/stats")
+async def get_queue_stats():
+    """
+    获取队列统计信息
+
+    返回:
+    - connected: Redis 是否已连接
+    - queue_length: 等待中的任务数
+    - processing: 正在处理的任务数
+    - max_concurrent: 最大并发数
+    """
+    return await queue_service.get_queue_stats()

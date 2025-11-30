@@ -5,8 +5,8 @@
 "有点东西餐饮管理有限公司"数据分析平台的数据录入前端，负责门店运营数据的采集与管理。
 
 **当前功能**：
-- 门店每日采购清单录入（支持手动录入 + AI 智能识别）
-- 设计助手（Gemini 3 驱动的前端设计协同）
+- 门店每日采购清单录入（支持手动录入 + 语音录入）
+- 图片识别功能暂时禁用（待后端 API 完成）
 
 ---
 
@@ -19,8 +19,7 @@
 | 语言 | TypeScript 5 | 类型安全 |
 | 样式 | **Tailwind CSS v4** | Storm Glass 毛玻璃风格 |
 | 图表 | Recharts | 仪表板数据可视化 |
-| AI 识别 | Google Gemini | gemini-2.5-flash（图片识别） |
-| AI 设计 | Google Gemini 3 Pro | gemini-3-pro-preview（设计协同） |
+| 语音录入 | 后端 WebSocket | 通过后端调用讯飞 ASR + Qwen |
 
 ---
 
@@ -29,12 +28,11 @@
 | 模块 | 文件 | 说明 | 状态 |
 |------|------|------|------|
 | 仪表板 | `components/Dashboard.tsx` | 数据概览与图表 | 已完成 |
-| 采购录入 | `components/EntryForm.tsx` | 手动+AI识别录入 | 已完成 |
+| 采购录入 | `components/EntryForm.tsx` | 手动+语音录入 | 已完成 |
 | 侧边栏 | `components/Sidebar.tsx` | 导航菜单 | 已完成 |
-| 设计助手 | `components/DesignAssistant.tsx` | Gemini 3 设计协同 | 已完成 |
 | UI 组件库 | `components/ui/*.tsx` | GlassCard, Button, Input | 已完成 |
-| AI 识别服务 | `services/geminiService.ts` | Gemini 图片识别 | 已完成 |
-| AI 设计服务 | `services/geminiDesignService.ts` | Gemini 3 设计生成 | 已完成 |
+| 语音服务 | `services/voiceEntryService.ts` | WebSocket 语音录入 | 已完成 |
+| 图片服务 | `services/imageService.ts` | 图片压缩/缩略图 | 已完成 |
 
 ---
 
@@ -278,11 +276,11 @@ frontend/
 │   │   └── index.ts        # 统一导出
 │   ├── Dashboard.tsx       # 仪表板
 │   ├── EntryForm.tsx       # 采购录入表单
-│   ├── Sidebar.tsx         # 侧边导航
-│   └── DesignAssistant.tsx # 设计助手（Gemini 3）
+│   └── Sidebar.tsx         # 侧边导航
 ├── services/
-│   ├── geminiService.ts    # Gemini 图片识别
-│   └── geminiDesignService.ts # Gemini 3 设计服务
+│   ├── voiceEntryService.ts # WebSocket 语音录入服务
+│   ├── imageService.ts     # 图片压缩/缩略图
+│   └── storageAdapter.ts   # 本地存储
 ├── public/
 │   └── backgrounds/        # 背景图片
 ├── ui设计风格/              # 设计参考资源
@@ -306,9 +304,10 @@ frontend/
 ## 核心业务规则
 
 1. **分类管理**：肉类、蔬果、干杂、酒水、低耗 5 大品类
-2. **物品字段**：名称、包装规格、数量、单位、单价、小计
+2. **物品字段**：名称、规格、数量、单位、单价、小计
 3. **自动计算**：小计 = 数量 × 单价，总计自动汇总
 4. **状态管理**：已入库(Stocked)、待处理(Pending)、异常(Issue)
+5. **门店识别**：通过账号绑定门店，登录后自动识别，无需UI选择
 
 ---
 
@@ -335,10 +334,11 @@ npm run build    # 构建生产版本
 ### 环境变量 (.env)
 
 ```bash
-GEMINI_API_KEY=your_gemini_api_key  # Gemini API Key
+# 可选：覆盖后端 URL（默认 localhost:8000）
+VITE_VOICE_BACKEND_URL=http://localhost:8000
 ```
 
-**注意**：无 API Key 时自动使用 Mock 数据演示
+**注意**：前端不存储 API Key，所有 AI 服务（讯飞、Qwen）通过后端调用
 
 ### MCP 工具
 
@@ -349,17 +349,19 @@ GEMINI_API_KEY=your_gemini_api_key  # Gemini API Key
 
 ---
 
-## 设计助手功能
+## 语音录入服务
 
-### Gemini 3 Pro 服务 (`geminiDesignService.ts`)
+### `voiceEntryService.ts`
 
-| 函数 | 功能 |
+通过 WebSocket 与后端通信，实现实时语音录入：
+
+| 方法 | 功能 |
 |------|------|
-| `imageToCode()` | 设计稿/截图转 React 代码 |
-| `reviewUI()` | UI 截图审查与优化建议 |
-| `generateComponent()` | 需求描述生成组件代码 |
+| `startRecording()` | 开始录音，建立 WebSocket 连接 |
+| `stopRecording()` | 停止录音，获取识别结果 |
+| `setCallbacks()` | 设置状态变化/结果回调 |
 
-**模型**：`gemini-3-pro-preview`
+**后端端点**：`ws://localhost:8000/api/voice/ws`
 
 ---
 

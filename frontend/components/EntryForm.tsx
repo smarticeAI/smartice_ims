@@ -7,7 +7,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { DailyLog, ProcurementItem, CategoryType, AttachedImage } from '../types';
-import { parseDailyReport } from '../services/geminiService';
+// 图片识别功能暂时禁用，待后端 API 完成后重新启用
+// import { parseDailyReport } from '../services/geminiService';
 import { compressImage, generateThumbnail, formatFileSize } from '../services/imageService';
 import { voiceEntryService, RecordingStatus, VoiceEntryResult } from '../services/voiceEntryService';
 import { Icons } from '../constants';
@@ -814,21 +815,11 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
         // 4. 立即添加到预览（显示识别中状态）
         setAttachedImages(prev => [...prev, newImage]);
 
-        // 5. 调用 AI 识别
-        const result = await parseDailyReport("", { data: compressed.data, mimeType: compressed.mimeType });
+        // AI 图片识别暂时禁用 - 待后端 API 完成后重新启用
+        // 目前图片仅作为附件保存，不进行识别
+        console.log('[图片上传] AI 识别已禁用，图片仅作为附件保存');
 
-        if (result) {
-          // 合并识别结果到表单
-          const currentItems = items.filter(i => i.name.trim() !== '');
-          setItems(prev => {
-            const existing = prev.filter(i => i.name.trim() !== '');
-            return [...existing, ...result.items];
-          });
-          if (!supplier && result.supplier) setSupplier(result.supplier);
-          if (!notes && result.notes) setNotes(result.notes);
-        }
-
-        // 6. 标记为已识别
+        // 直接标记为已处理（非识别）
         setAttachedImages(prev =>
           prev.map(img => img.id === imageId ? { ...img, recognized: true } : img)
         );

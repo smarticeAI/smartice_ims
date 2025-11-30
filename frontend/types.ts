@@ -45,7 +45,7 @@ export enum AppView {
   DASHBOARD = 'DASHBOARD',
   NEW_ENTRY = 'NEW_ENTRY',
   HISTORY = 'HISTORY',
-  DESIGN_ASSISTANT = 'DESIGN_ASSISTANT',
+  // DESIGN_ASSISTANT 已移除 - 前后端分离重构
 }
 
 // ============ Gemini Design Service Types ============

@@ -4,7 +4,7 @@
 
 库存录入系统的语音识别后端服务，将语音输入转换为结构化的采购清单 JSON。
 
-**核心流程**：语音 → 讯飞ASR → Gemini结构化提取 → JSON → 前端填充表单
+**核心流程**：语音 → 讯飞ASR → Qwen结构化提取 → JSON → 前端填充表单
 
 ---
 
@@ -16,7 +16,8 @@
 | 语言 | Python 3.11+ | 类型注解 |
 | 包管理 | uv | 快速依赖管理 |
 | 语音识别 | 讯飞开放平台 | 支持四川方言/普通话 |
-| 结构化提取 | Google Gemini | gemini-2.0-flash |
+| 结构化提取 | 阿里云 Qwen | qwen-plus (通义千问) |
+| 任务队列 | Redis | 可选，支持限流和异步处理 |
 | 实时通信 | WebSocket | 流式音频传输 |
 
 ---
@@ -26,14 +27,15 @@
 ```
 backend/
 ├── app/
-│   ├── main.py              # FastAPI 应用入口
+│   ├── main.py              # FastAPI 应用入口 (v1.2)
 │   ├── models/
 │   │   └── voice_entry.py   # Pydantic 数据模型
 │   ├── routes/
 │   │   └── voice.py         # API 路由 (WebSocket + REST)
 │   └── services/
 │       ├── xunfei_asr.py    # 讯飞语音识别服务
-│       └── gemini_extractor.py  # Gemini 结构化提取
+│       ├── qwen_extractor.py    # Qwen 结构化提取
+│       └── queue_service.py     # Redis 队列服务
 ├── pyproject.toml           # 项目配置 (uv)
 ├── .env                     # 环境变量 (gitignore)
 └── .env.example             # 环境变量模板
@@ -58,7 +60,7 @@ backend/
 **服务端 → 客户端**:
 ```json
 { "type": "status", "status": "listening" }  // 状态更新
-{ "type": "text", "data": "识别文本" }        // 识别结果
+{ "type": "partial", "text": "实时识别..." }  // 部分识别结果
 { "type": "result", "result": {...} }        // 结构化结果
 { "type": "error", "error": "错误信息" }      // 错误
 ```
@@ -70,6 +72,14 @@ backend/
 ### REST: `POST /api/voice/extract`
 
 直接从文本提取结构化数据（测试用）
+
+### REST: `GET /api/voice/health`
+
+健康检查，返回服务和队列状态
+
+### REST: `GET /api/voice/queue/stats`
+
+获取 Redis 队列统计信息
 
 ---
 
@@ -87,7 +97,7 @@ backend/
             "specification": "规格/包装",
             "quantity": 30,
             "unit": "斤",
-            "unitPrice": 68,
+            "unitPrice": 68,   # 采购单位价格
             "total": 2040
         }
     ]
@@ -101,7 +111,7 @@ backend/
 ### 启动服务
 
 ```bash
-cd inventory-entry-backend
+cd backend
 
 # 安装依赖
 uv sync
@@ -125,11 +135,14 @@ uv run uvicorn app.main:app --reload --port 8000
 
 | 变量 | 说明 | 必需 |
 |------|------|------|
-| `XUNFEI_APP_ID` | 讯飞应用 ID | 否 (无则 Mock) |
-| `XUNFEI_API_KEY` | 讯飞 API Key | 否 (无则 Mock) |
-| `GEMINI_API_KEY` | Gemini API Key | 否 (无则 Mock) |
+| `XUNFEI_APP_ID` | 讯飞应用 ID | 是 |
+| `XUNFEI_API_KEY` | 讯飞 API Key | 是 |
+| `XUNFEI_API_SECRET` | 讯飞 API Secret | 是 |
+| `QWEN_API_KEY` | 通义千问 API Key | 是 |
+| `REDIS_URL` | Redis 连接 URL | 否 (无则直接调用) |
+| `CORS_ORIGINS` | 生产环境前端域名 | 否 |
 
-**注意**：未配置 API Key 时自动使用 Mock 模式进行演示
+**注意**：未配置 Redis 时使用直接调用模式，无队列功能
 
 ---
 
@@ -140,49 +153,53 @@ uv run uvicorn app.main:app --reload --port 8000
 | 采样率 | 16kHz |
 | 位深度 | 16bit |
 | 声道 | 单声道 (Mono) |
-| 格式 | PCM / WAV |
+| 格式 | PCM / WAV / WebM (自动转换) |
 
 ---
 
-## 常见问题与经验
+## 部署配置
 
-### 1. Gemini API 429 错误排查
+### 生产环境 CORS
 
-**症状**：Gemini 提取返回空 items，fallback 到 mock 模式
+通过环境变量配置允许的前端域名：
 
-**排查步骤**：
-1. 检查后端日志是否有 `ResourceExhausted: 429` 错误
-2. 直接用 curl 测试 API Key 是否有效：
-   ```bash
-   curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=YOUR_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"contents":[{"parts":[{"text":"Hello"}]}]}'
-   ```
-
-**常见原因**：
-- **系统环境变量覆盖**：`load_dotenv()` 默认不覆盖已存在的环境变量
-  - 解决：使用 `load_dotenv(override=True)`
-- **API Key 配额超限**：免费版每分钟 15 次请求限制
-  - 解决：等待配额刷新 / 使用其他账号 Key
-- **同账号多 Key 共享配额**：同一 Google 账号的所有 Key 共享配额
-
-**验证环境变量**：
 ```bash
-# 检查系统环境变量
-echo $GEMINI_API_KEY
-
-# 检查 .env 文件
-cat .env | grep GEMINI
+CORS_ORIGINS=https://app.example.com,https://www.example.com
 ```
 
-### 2. Mock 模式触发条件
+### Redis 队列
+
+配置 Redis 启用任务队列和限流：
+
+```bash
+REDIS_URL=redis://:password@host:port/0
+```
+
+队列功能：
+- 任务入队/出队管理
+- 最大并发限制（默认 3）
+- 任务状态追踪
+- 结果缓存（1小时）
+
+---
+
+## 常见问题
+
+### 1. Qwen API 限流
+
+**症状**：返回 429 错误
+
+**解决**：
+- 检查 API 配额
+- 启用 Redis 队列进行限流
+- 使用指数退避重试（已内置）
+
+### 2. Mock 模式触发
 
 当以下情况发生时，自动 fallback 到 mock 模式：
-- `GEMINI_API_KEY` 未配置
-- API 调用失败（429/网络错误等）
+- `QWEN_API_KEY` 未配置
+- API 调用失败
 - JSON 解析失败
-
-Mock 模式仅对包含特定关键词（"五花肉"、"土豆"）的文本返回预设数据。
 
 ---
 
