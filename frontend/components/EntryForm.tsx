@@ -366,12 +366,12 @@ const WorksheetScreen: React.FC<{
                  <div className="grid grid-cols-12 gap-2">
                     {/* Packaging */}
                     <div className="col-span-3">
-                        <label className="block text-[9px] text-muted mb-1 text-center">包装</label>
+                        <label className="block text-[9px] text-muted mb-1 text-center">规格</label>
                         <input
                             type="text"
                             value={item.specification || ''}
                             onChange={(e) => onItemChange(index, 'specification', e.target.value)}
-                            placeholder="规格/包装"
+                            placeholder="规格"
                             className="w-full bg-cacao-husk/60 border border-[rgba(138,75,47,0.3)] rounded-glass-sm py-2 text-center text-sm text-secondary outline-none focus:border-ember-rock/50 placeholder:text-white/40"
                         />
                     </div>
