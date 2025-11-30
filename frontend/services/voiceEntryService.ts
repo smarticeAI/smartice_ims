@@ -1,9 +1,9 @@
 // 语音录入服务
-// v2.4 - 实时流式语音识别，WebSocket 音频流传输，支持连续录音会话
-// v2.1: 修复收到识别结果后不关闭 WebSocket，允许多次录音
-// v2.2: 优化 buffer size 从 4096 降至 1024，减少 ~192ms 延迟
-// v2.3: 处理 stop_recording 信号，当讯飞 VAD 检测到静音时立即停止发送音频
+// v2.5 - 语音识别与结构化提取分离：识别后返回文本供用户编辑，点击发送后才调用 Qwen
 // v2.4: 修复竞态条件 - 在 getUserMedia 等待期间 WebSocket 状态可能变化
+// v2.3: 处理 stop_recording 信号，当讯飞 VAD 检测到静音时立即停止发送音频
+// v2.2: 优化 buffer size 从 4096 降至 1024，减少 ~192ms 延迟
+// v2.1: 修复收到识别结果后不关闭 WebSocket，允许多次录音
 // 与后端 inventory-entry-backend 配合使用，实时返回部分识别结果
 
 import { ProcurementItem } from '../types';
@@ -20,8 +20,8 @@ export interface VoiceEntryResult {
 }
 
 // WebSocket 消息类型
-// v2.3: 添加 stop_recording 类型
-export type VoiceMessageType = 'start' | 'audio' | 'end' | 'cancel' | 'status' | 'partial' | 'text' | 'result' | 'error' | 'stop_recording';
+// v2.5: 添加 text_final 类型（识别完成但未解析）
+export type VoiceMessageType = 'start' | 'audio' | 'end' | 'cancel' | 'status' | 'partial' | 'text' | 'text_final' | 'result' | 'error' | 'stop_recording';
 
 export interface VoiceMessage {
   type: VoiceMessageType;
@@ -38,9 +38,11 @@ export interface VoiceMessage {
 export type RecordingStatus = 'idle' | 'recording' | 'processing' | 'completed' | 'error';
 
 // 回调函数类型
+// v2.5: 添加 onTextFinal 回调（识别完成，可编辑后发送）
 export interface VoiceEntryCallbacks {
   onStatusChange?: (status: RecordingStatus, message?: string) => void;
   onPartialText?: (text: string) => void;
+  onTextFinal?: (text: string) => void;  // v2.5: 识别完成，文本可供编辑
   onResult?: (result: VoiceEntryResult, rawText: string) => void;
   onError?: (error: string) => void;
 }
@@ -481,15 +483,21 @@ class VoiceEntryService {
         // v2.3: 后端通知停止录音（讯飞 VAD 检测到静音，已完成识别）
         console.log('[VoiceEntry] 收到停止录音信号:', message.message);
         this.stopAudioProcessing();
-        this.updateStatus('processing', '正在解析...');
+        break;
+
+      case 'text_final':
+        // v2.5: 识别完成，返回文本供用户编辑（不自动解析）
+        console.log('[VoiceEntry] 识别完成，文本:', message.text);
+        this.updateStatus('idle', '');  // 回到 idle，允许继续录音或手动发送
+        this.callbacks.onTextFinal?.(message.text || '');
+        this.stopAudioProcessing();
         break;
 
       case 'result':
+        // 保留 result 处理以兼容旧版后端
         if (message.result) {
-          // v2.1: 识别完成，设置为 idle 状态，准备下一次录音
           this.updateStatus('idle', '');
           this.callbacks.onResult?.(message.result, message.raw_text || '');
-          // v2.3: 音频处理已在 stop_recording 中停止，此处仅作为后备
           this.stopAudioProcessing();
         }
         break;

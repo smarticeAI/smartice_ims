@@ -1,10 +1,9 @@
 # 讯飞语音听写服务 (IAT - Intelligent Audio Transcription)
-# v3.5 - 实时流式语音识别，支持 WebSocket 双向通信
-# v3.1: 优化 vad_eos 从 3000ms 降至 2000ms，减少静音检测延迟
-# v3.2: 正确处理 pgs/rg 字段，实现逐字显示效果
-# v3.3: 修复识别完成后继续发送音频导致的 timeout 错误
-# v3.4: 移除 Mock 模式，API 错误时抛出异常
+# v3.6 - 增加 vad_eos 到 60 秒，用户手动控制停止录音
 # v3.5: 延迟凭证验证，避免应用启动崩溃
+# v3.4: 移除 Mock 模式，API 错误时抛出异常
+# v3.3: 修复识别完成后继续发送音频导致的 timeout 错误
+# v3.2: 正确处理 pgs/rg 字段，实现逐字显示效果
 # 文档: https://www.xfyun.cn/doc/asr/voicedictation/API.html
 
 import websockets
@@ -95,17 +94,19 @@ class XunfeiASRService:
         """
         创建首帧数据 (包含业务参数)
         """
+        # v3.6: vad_eos 设置为 60 秒（讯飞最大值），让用户手动控制停止
+        # 这样用户可以在说话时随意停顿，不会因为短暂沉默而自动停止识别
         business_params = {
             "language": language,
             "domain": "iat",
             "accent": "mandarin" if language == "zh_cn" else "mandarin",
-            "vad_eos": 10000,
-            "dwa": "wpgs",
-            "ptt": 1,
-            "nunum": 1,
+            "vad_eos": 60000,  # 60 秒静音超时（最大值）
+            "dwa": "wpgs",     # 动态修正
+            "ptt": 1,          # 标点符号
+            "nunum": 1,        # 数字转阿拉伯
         }
 
-        print(f"[XunfeiASR] 业务参数: language={language}, vad_eos=10000ms, dwa=wpgs")
+        print(f"[XunfeiASR] 业务参数: language={language}, vad_eos=60000ms (用户手动控制), dwa=wpgs")
 
         return {
             "common": {

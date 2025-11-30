@@ -624,7 +624,7 @@ const TranscriptionBox: React.FC<{
               ? '正在聆听...'
               : voiceStatus === 'processing'
               ? '正在处理...'
-              : '点击麦克风语音录入，或直接输入文字'
+              : '点击麦克风进行AI语音录入，发送后自动生成入库单'
           }
           disabled={voiceStatus === 'recording'}
           className="w-full min-h-[44px] max-h-[120px] rounded-xl px-3 py-2 bg-transparent text-white/90 text-sm placeholder-white/30 outline-none resize-none disabled:cursor-not-allowed"

@@ -1,10 +1,10 @@
 # 语音录入 API 路由
-# v2.5 - 实时流式语音识别 WebSocket + REST 备用接口
-# v2.1: 支持连续录音会话，收到识别结果后不关闭 WebSocket
-# v2.2: 添加 stop_recording 信号，通知前端停止发送音频
-# v2.3: 切换到 Qwen (通义千问) 替代 Gemini 作为结构化提取服务
-# v2.4: 添加文件上传验证 (大小限制、格式检查)
+# v2.6 - 语音识别与结构化提取分离：WebSocket 仅返回识别文本，用户确认后再调用 /extract
 # v2.5: 添加 Redis 队列状态端点
+# v2.4: 添加文件上传验证 (大小限制、格式检查)
+# v2.3: 切换到 Qwen (通义千问) 替代 Gemini 作为结构化提取服务
+# v2.2: 添加 stop_recording 信号，通知前端停止发送音频
+# v2.1: 支持连续录音会话，收到识别结果后不关闭 WebSocket
 # 支持 WebM -> PCM 音频格式转换，实时返回部分识别结果
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException
@@ -130,38 +130,30 @@ async def voice_entry_websocket(websocket: WebSocket):
 
                 try:
                     # 使用实时流式识别
+                    print("[VoiceWS] >>> 开始实时识别...")
                     raw_text = await xunfei_asr.transcribe_realtime(
                         client_ws=websocket
                     )
-                    print(f"[VoiceWS] 最终识别文本: {raw_text}")
+                    print(f"[VoiceWS] >>> 讯飞识别完成，文本: {raw_text}")
 
-                    # v2.2: 通知前端停止录音（讯飞已完成识别，VAD检测到静音）
+                    # v2.6: 仅返回识别文本，不自动调用 Qwen 提取
+                    # 用户可编辑文本后手动点击发送，调用 /api/voice/extract
+                    print("[VoiceWS] >>> 发送 stop_recording 信号...")
                     await websocket.send_json({
                         "type": "stop_recording",
-                        "message": "识别完成，停止录音"
+                        "message": "识别完成"
                     })
 
-                    # 更新状态
+                    # 发送识别文本（不再包含结构化结果）
+                    print(f"[VoiceWS] >>> 发送 text_final (不调用 Qwen!)，文本: {raw_text}")
                     await websocket.send_json({
-                        "type": "status",
-                        "status": ASRStatus.PROCESSING.value,
-                        "message": "正在解析..."
-                    })
-
-                    # Step 2: 结构化提取
-                    result = await qwen_extractor.extract(raw_text)
-                    print(f"[VoiceWS] 提取结果: {result.model_dump()}")
-
-                    # 发送最终结果
-                    await websocket.send_json({
-                        "type": "result",
+                        "type": "text_final",
                         "status": ASRStatus.COMPLETED.value,
-                        "raw_text": raw_text,
-                        "result": result.model_dump()
+                        "text": raw_text
                     })
 
-                    # v2.1: 不关闭连接，继续等待下一次录音
-                    print("[VoiceWS] 识别完成，等待下一次录音...")
+                    # 不关闭连接，等待下一次录音
+                    print("[VoiceWS] >>> 等待用户编辑/继续录音/发送解析...")
 
                 except Exception as e:
                     print(f"[VoiceWS] 处理错误: {e}")
@@ -303,8 +295,11 @@ async def extract_from_text(input_data: TextInput):
     Returns:
         VoiceEntryResult: 结构化的采购清单
     """
+    print(f"[VoiceAPI] >>> /extract 被调用! 文本: {input_data.text[:50]}...")
     try:
+        print("[VoiceAPI] >>> 正在调用 Qwen 解析...")
         result = await qwen_extractor.extract(input_data.text)
+        print(f"[VoiceAPI] >>> Qwen 解析完成: {result}")
         return JSONResponse(content={
             "success": True,
             "result": result.model_dump()
