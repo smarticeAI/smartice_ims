@@ -328,7 +328,7 @@ const WorksheetScreen: React.FC<{
                  </div>
                ))}
 
-               {/* 上传按钮 - 拍照/选择图片 */}
+               {/* 拍照按钮 */}
                <button
                  onClick={() => cameraInputRef.current?.click()}
                  disabled={isAnalyzing}
@@ -339,9 +339,19 @@ const WorksheetScreen: React.FC<{
                  ) : (
                    <>
                      <Icons.Camera className="w-6 h-6 text-white/50" />
-                     <span className="text-[10px] text-white/40">拍照上传</span>
+                     <span className="text-[10px] text-white/40">拍照</span>
                    </>
                  )}
+               </button>
+
+               {/* 从相册选择按钮（支持多选） */}
+               <button
+                 onClick={() => fileInputRef.current?.click()}
+                 disabled={isAnalyzing}
+                 className="w-20 h-20 rounded-xl border-2 border-dashed border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-40"
+               >
+                 <Icons.Folder className="w-6 h-6 text-white/50" />
+                 <span className="text-[10px] text-white/40">相册</span>
                </button>
              </div>
           </div>
