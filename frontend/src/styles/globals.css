@@ -502,6 +502,7 @@
 }
 
 /* ========== 基础层 - Warm Immersive Atmosphere ========== */
+/* v1.8 - 修复移动端背景滚动问题：使用固定定位背景层替代 background-attachment: fixed */
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
@@ -510,11 +511,32 @@
   }
 
   body {
+    /* 仅保留纯色背景作为 fallback，移除 background-attachment: fixed */
+    /* 移动端 (iOS Safari) 不支持 background-attachment: fixed */
     background-color: var(--color-surface-base);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Root element full height - fix gray area at bottom */
+  #root {
+    min-height: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  /* 固定背景层 - 使用 ::before 伪元素创建不可滚动的背景 */
+  /* 解决移动端 background-attachment: fixed 不生效的问题 */
+  #root::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
     /* Storm Glass - 云海日落背景 + 中性叠加层 */
     background:
       /* 中性深灰叠加层 - 让暖色背景自然透出 */
@@ -524,16 +546,14 @@
         rgba(30, 30, 35, 0.5) 50%,
         rgba(20, 20, 25, 0.75) 100%
       ),
-      /* 云海日落实景背景 - WebP优先，JPG回退 */
-      url('/backgrounds/cloud-sunset.webp') center/cover fixed no-repeat;
-    min-height: 100%;
-    height: 100%;
-  }
-
-  /* Root element full height - fix gray area at bottom */
-  #root {
-    min-height: 100%;
-    height: 100%;
+      /* 云海日落实景背景 */
+      url('/backgrounds/cloud-sunset.webp') center/cover no-repeat;
+    background-size: cover;
+    /* 禁止背景层接收任何触摸/点击事件 */
+    pointer-events: none;
+    /* 强制 GPU 加速，提升移动端渲染性能 */
+    transform: translateZ(0);
+    will-change: transform;
   }
 
   /* Bold clean typography */
