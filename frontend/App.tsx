@@ -158,7 +158,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <main className={`flex-1 overflow-y-auto ${currentView === AppView.NEW_ENTRY ? 'p-0' : 'p-4 md:p-8'} max-w-5xl mx-auto w-full`}>
+        <main className={`flex-1 ${currentView === AppView.DASHBOARD ? 'overflow-hidden' : 'overflow-y-auto'} ${currentView === AppView.NEW_ENTRY ? 'p-0' : 'p-4 md:p-8'} max-w-5xl mx-auto w-full`}>
             {currentView === AppView.DASHBOARD && <Dashboard logs={logs} />}
             {currentView === AppView.NEW_ENTRY && <EntryForm onSave={handleSaveEntry} userName={CURRENT_USER_NAME} />}
             {currentView === AppView.HISTORY && <HistoryView />}

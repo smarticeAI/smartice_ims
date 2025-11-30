@@ -15,9 +15,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
   const uniqueSuppliers = new Set(logs.map(l => l.supplier)).size;
 
   // Widget with 深色毛玻璃效果 - Cacao Night 风格
+  // Responsive: use min-h with flex-1 to adapt to available space
   const Widget = ({ label, value }: { label: string, value: string }) => (
-    <div className="glass-card h-36 p-5 flex flex-col justify-between relative overflow-hidden group">
-      <span className="text-xl font-bold text-primary z-10">{label}</span>
+    <div className="glass-card min-h-[100px] p-4 flex flex-col justify-between relative overflow-hidden group flex-1">
+      <span className="text-lg font-bold text-primary z-10">{label}</span>
       <p className="text-hero-number-xs z-10">{value}</p>
     </div>
   );
@@ -28,9 +29,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
   }));
 
   return (
-    <div className="space-y-8 animate-slide-in pb-4">
+    <div className="h-full flex flex-col gap-4 animate-slide-in pb-4 overflow-hidden">
       {/* Header - Bold clean typography with breathing room */}
-      <div className="flex items-center justify-between mb-6 pt-2">
+      <div className="flex items-center justify-between pt-2 flex-shrink-0">
         <div>
           <h2 className="text-2xl font-bold text-primary tracking-tight mb-1">今日概况</h2>
           <p className="text-sm text-secondary">实时数据监控</p>
@@ -40,15 +41,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
         </button>
       </div>
 
-      {/* Stats Grid - 参考 UI风格A 布局 */}
-      <div className="grid grid-cols-2 gap-5">
-        {/* 主金额卡片 - 深色玻璃 */}
+      {/* Stats Grid - 参考 UI风格A 布局 - Responsive heights */}
+      <div className="grid grid-cols-2 gap-4 flex-shrink-0">
+        {/* 主金额卡片 - 深色玻璃 - Responsive height */}
         <div className="col-span-2">
-           <GlassCard padding="lg" className="h-40 flex flex-col justify-between relative overflow-hidden group">
+           <GlassCard padding="md" className="min-h-[120px] flex flex-col justify-between relative overflow-hidden group">
              {/* 微弱光晕 */}
              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 group-hover:opacity-15 transition-all duration-500 blur-3xl bg-white"></div>
 
-             <span className="text-xl font-bold text-primary z-10">总采购额</span>
+             <span className="text-lg font-bold text-primary z-10">总采购额</span>
              <p className="text-hero-number z-10">
                ¥{totalSpend.toLocaleString()}
              </p>
@@ -59,16 +60,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
         <Widget label="供应商数" value={uniqueSuppliers.toString()} />
       </div>
 
-      {/* Chart Card - 参考 UI风格A */}
-      <GlassCard variant="elevated" padding="lg" className="relative overflow-hidden">
+      {/* Chart Card - 参考 UI风格A - Takes remaining space */}
+      <GlassCard variant="elevated" padding="md" className="relative overflow-hidden flex-1 min-h-0 flex flex-col">
         {/* 微弱光晕 */}
         <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-white/5 blur-3xl"></div>
 
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-primary">支出趋势</h3>
-          <span className="text-xl font-bold text-primary">本月概览</span>
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <h3 className="text-lg font-bold text-primary">支出趋势</h3>
+          <span className="text-lg font-bold text-primary">本月概览</span>
         </div>
-        <div className="h-56 w-full relative z-10">
+        <div className="flex-1 min-h-0 w-full relative z-10">
             <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
                 <defs>

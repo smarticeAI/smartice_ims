@@ -163,12 +163,12 @@ const WelcomeScreen: React.FC<{ userName: string; onStart: () => void }> = ({ us
 // --- Category Screen (Floating Layered List) ---
 
 const CategoryScreen: React.FC<{ onSelect: (cat: CategoryType) => void; onBack: () => void }> = ({ onSelect, onBack }) => (
-  <div className="h-full p-6 flex flex-col animate-slide-in relative overflow-hidden">
+  <div className="min-h-full h-full p-6 flex flex-col animate-slide-in relative overflow-hidden safe-area-bottom">
     {/* Vintage Postcard ambient glows */}
     <div className="absolute top-20 right-10 w-64 h-64 rounded-full bg-harbor-blue opacity-12 blur-3xl"></div>
     <div className="absolute bottom-40 left-10 w-48 h-48 rounded-full bg-faded-steel opacity-10 blur-2xl"></div>
 
-    <div className="flex items-center gap-4 mb-10 pt-2 relative z-10">
+    <div className="flex items-center gap-4 mb-10 pt-2 relative z-10 flex-shrink-0">
       <button
         onClick={onBack}
         className="w-10 h-10 rounded-full bg-glass-bg backdrop-blur-glass border border-glass-border flex items-center justify-center text-secondary hover:bg-glass-bg-hover transition-colors"
@@ -178,7 +178,7 @@ const CategoryScreen: React.FC<{ onSelect: (cat: CategoryType) => void; onBack: 
       <h2 className="text-2xl font-bold text-primary tracking-tight">选择分类</h2>
     </div>
 
-    <div className="flex-1 space-y-3 overflow-y-auto relative z-10">
+    <div className="flex-1 space-y-3 overflow-y-auto relative z-10 pb-4">
       {CATEGORIES.map((cat, idx) => (
         <button
           key={cat.id}
@@ -918,7 +918,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
   };
 
   return (
-    <div className="h-full text-primary overflow-hidden">
+    <div className="h-full min-h-full text-primary overflow-hidden">
       {step === 'WELCOME' && (
         <WelcomeScreen
           userName={userName}

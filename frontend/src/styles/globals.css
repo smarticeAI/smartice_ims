@@ -506,6 +506,7 @@
   html {
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
+    height: 100%;
   }
 
   body {
@@ -523,9 +524,16 @@
         rgba(30, 30, 35, 0.5) 50%,
         rgba(20, 20, 25, 0.75) 100%
       ),
-      /* 云海日落实景背景 */
-      url('/backgrounds/cloud-sunset.jpg') center/cover fixed no-repeat;
-    min-height: 100vh;
+      /* 云海日落实景背景 - WebP优先，JPG回退 */
+      url('/backgrounds/cloud-sunset.webp') center/cover fixed no-repeat;
+    min-height: 100%;
+    height: 100%;
+  }
+
+  /* Root element full height - fix gray area at bottom */
+  #root {
+    min-height: 100%;
+    height: 100%;
   }
 
   /* Bold clean typography */
