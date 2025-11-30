@@ -1,8 +1,9 @@
 # Qwen 结构化提取服务
-# v1.3 - 使用阿里云通义千问 API 将语音识别文本转换为采购清单 JSON
+# v1.4 - 使用阿里云通义千问 API 将语音识别文本转换为采购清单 JSON
 # v1.1: 优化 specification 字段格式，使用斜杠分隔包装规格（用于最小单位计算）
 # v1.2: 精简 prompt，移除方言处理（由讯飞 ASR 处理）
 # v1.3: 移除 Mock 模式，API 错误时抛出异常
+# v1.4: 延迟凭证验证，避免应用启动崩溃
 # 替代 Gemini 的中国本土化方案，使用 OpenAI 兼容接口
 
 import os
@@ -49,22 +50,33 @@ class QwenExtractorService:
         """
         初始化 Qwen 服务
         环境变量:
-        - QWEN_API_KEY 或 DASHSCOPE_API_KEY: API 密钥 (必需)
+        - QWEN_API_KEY 或 DASHSCOPE_API_KEY: API 密钥
         - QWEN_BASE_URL: 可选，自定义端点
+        v1.4: 延迟验证凭证，不在启动时崩溃
         """
         api_key = os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY", "")
         base_url = os.getenv("QWEN_BASE_URL", self.BASE_URL_CHINA)
         self.model = os.getenv("QWEN_MODEL", "qwen-plus")
 
-        if not api_key:
-            raise ValueError("[QwenExtractor] 错误: 未配置 QWEN_API_KEY 环境变量")
+        # 检查配置状态但不抛出异常
+        self.available = bool(api_key)
+        self.client = None
 
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url,
-        )
-        self.available = True
-        print(f"[QwenExtractor] 已配置 Qwen API ({self.model}) - {base_url}")
+        if self.available:
+            self.client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+            )
+            print(f"[QwenExtractor] 已配置 Qwen API ({self.model}) - {base_url}")
+        else:
+            print("[QwenExtractor] 警告: 未配置 QWEN_API_KEY，服务不可用")
+
+    def _check_available(self):
+        """检查服务是否可用，不可用时抛出异常"""
+        if not self.available or not self.client:
+            raise RuntimeError(
+                "Qwen 结构化提取服务未配置。请设置环境变量: QWEN_API_KEY"
+            )
 
     def _extract_json_from_response(self, text: str) -> dict:
         """
@@ -108,10 +120,13 @@ class QwenExtractorService:
             VoiceEntryResult: 结构化的采购清单
 
         Raises:
+            RuntimeError: 服务未配置
             ValueError: 输入文本为空
             APIError: API 调用失败
             json.JSONDecodeError: JSON 解析失败
         """
+        self._check_available()
+
         if not text.strip():
             raise ValueError("输入文本为空")
 

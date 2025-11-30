@@ -21,18 +21,22 @@ app = FastAPI(
 )
 
 # CORS 配置 - 允许前端访问
+# v1.2: 移除通配符'*'，仅允许明确的开发/生产域名
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",      # Vite 开发服务器
+    "http://localhost:5173",      # Vite 默认端口
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    # 生产环境添加实际域名:
+    # "https://your-production-domain.com",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",      # Vite 开发服务器
-        "http://localhost:5173",      # Vite 默认端口
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "*"  # 开发阶段允许所有来源
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
 # 注册路由
@@ -72,8 +76,8 @@ async def startup_event():
     xunfei_configured = bool(os.getenv("XUNFEI_APP_ID")) and bool(os.getenv("XUNFEI_API_KEY"))
     qwen_configured = bool(os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY"))
 
-    print(f"讯飞 ASR: {'已配置' if xunfei_configured else 'Mock 模式'}")
-    print(f"Qwen:     {'已配置' if qwen_configured else 'Mock 模式'}")
+    print(f"讯飞 ASR: {'已配置' if xunfei_configured else '未配置'}")
+    print(f"Qwen:     {'已配置' if qwen_configured else '未配置'}")
     print("=" * 50)
 
 

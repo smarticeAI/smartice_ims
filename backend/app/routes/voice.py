@@ -1,8 +1,9 @@
 # 语音录入 API 路由
-# v2.3 - 实时流式语音识别 WebSocket + REST 备用接口
+# v2.4 - 实时流式语音识别 WebSocket + REST 备用接口
 # v2.1: 支持连续录音会话，收到识别结果后不关闭 WebSocket
 # v2.2: 添加 stop_recording 信号，通知前端停止发送音频
 # v2.3: 切换到 Qwen (通义千问) 替代 Gemini 作为结构化提取服务
+# v2.4: 添加文件上传验证 (大小限制、格式检查)
 # 支持 WebM -> PCM 音频格式转换，实时返回部分识别结果
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException
@@ -74,6 +75,14 @@ async def convert_audio_to_pcm(audio_data: bytes, input_format: str = "webm") ->
         if os.path.exists(output_path):
             os.remove(output_path)
 
+
+# 文件上传限制
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_AUDIO_TYPES = {
+    "audio/webm", "audio/wav", "audio/wave", "audio/x-wav",
+    "audio/mpeg", "audio/mp3", "audio/ogg", "application/octet-stream"
+}
+ALLOWED_EXTENSIONS = {".webm", ".wav", ".mp3", ".ogg", ".pcm"}
 
 router = APIRouter(prefix="/api/voice", tags=["语音录入"])
 
@@ -193,13 +202,40 @@ async def transcribe_audio(
     - WAV: 16kHz (自动跳过 WAV 头)
     - PCM: 16kHz, 16bit, 单声道
 
+    限制:
+    - 最大文件大小: 10MB
+    - 最大音频时长: 60秒 (讯飞 ASR 限制)
+
     Returns:
         VoiceEntryResult: 结构化的采购清单
     """
+    filename = audio.filename or "recording.webm"
+    file_ext = os.path.splitext(filename)[1].lower()
+
+    # 验证文件扩展名
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的音频格式: {file_ext}。支持: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+
+    # 验证 Content-Type (允许 application/octet-stream 因为某些浏览器发送这个)
+    if audio.content_type and audio.content_type not in ALLOWED_AUDIO_TYPES:
+        print(f"[VoiceAPI] 警告: 非标准 Content-Type: {audio.content_type}")
+
     try:
         # 读取音频数据
         audio_data = await audio.read()
-        filename = audio.filename or "recording.webm"
+
+        # 验证文件大小
+        if len(audio_data) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"文件过大: {len(audio_data) / 1024 / 1024:.1f}MB，最大允许 10MB"
+            )
+
+        if len(audio_data) == 0:
+            raise HTTPException(status_code=400, detail="音频文件为空")
 
         print(f"[VoiceAPI] 收到音频文件: {filename}, 大小: {len(audio_data)} bytes")
 
@@ -226,9 +262,24 @@ async def transcribe_audio(
             "result": result.model_dump()
         })
 
+    except HTTPException:
+        # 重新抛出已处理的 HTTP 异常
+        raise
+    except RuntimeError as e:
+        # 服务未配置
+        print(f"[VoiceAPI] 服务未配置: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+    except ConnectionError as e:
+        # 外部 API 连接失败
+        print(f"[VoiceAPI] 连接错误: {e}")
+        raise HTTPException(status_code=502, detail=f"外部服务连接失败: {e}")
+    except ValueError as e:
+        # 输入验证错误
+        print(f"[VoiceAPI] 输入错误: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         print(f"[VoiceAPI] 处理错误: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {e}")
 
 
 class TextInput(BaseModel):
@@ -255,19 +306,31 @@ async def extract_from_text(input_data: TextInput):
             "success": True,
             "result": result.model_dump()
         })
+    except RuntimeError as e:
+        # 服务未配置
+        raise HTTPException(status_code=503, detail=str(e))
+    except ValueError as e:
+        # 输入验证错误 (空文本)
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {e}")
 
 
 @router.get("/health")
 async def health_check():
     """
-    健康检查接口
+    健康检查接口 - 返回服务配置状态
     """
+    xunfei_status = "available" if xunfei_asr.available else "not_configured"
+    qwen_status = "available" if qwen_extractor.available else "not_configured"
+
+    # 整体状态: 两个服务都可用才算 ok
+    overall_status = "ok" if (xunfei_asr.available and qwen_extractor.available) else "degraded"
+
     return {
-        "status": "ok",
+        "status": overall_status,
         "services": {
-            "xunfei_asr": "configured",
-            "qwen_extractor": "configured"
+            "xunfei_asr": xunfei_status,
+            "qwen_extractor": qwen_status
         }
     }

@@ -1,9 +1,10 @@
 # 讯飞语音听写服务 (IAT - Intelligent Audio Transcription)
-# v3.4 - 实时流式语音识别，支持 WebSocket 双向通信
+# v3.5 - 实时流式语音识别，支持 WebSocket 双向通信
 # v3.1: 优化 vad_eos 从 3000ms 降至 2000ms，减少静音检测延迟
 # v3.2: 正确处理 pgs/rg 字段，实现逐字显示效果
 # v3.3: 修复识别完成后继续发送音频导致的 timeout 错误
 # v3.4: 移除 Mock 模式，API 错误时抛出异常
+# v3.5: 延迟凭证验证，避免应用启动崩溃
 # 文档: https://www.xfyun.cn/doc/asr/voicedictation/API.html
 
 import websockets
@@ -32,17 +33,28 @@ class XunfeiASRService:
     def __init__(self):
         """
         初始化讯飞 ASR 服务
-        需要 APPID, APIKey, APISecret 三个凭证 (必需)
+        需要 APPID, APIKey, APISecret 三个凭证
+        v3.5: 延迟验证凭证，不在启动时崩溃
         """
         self.app_id = os.getenv("XUNFEI_APP_ID", "")
         self.api_key = os.getenv("XUNFEI_API_KEY", "")
         self.api_secret = os.getenv("XUNFEI_API_SECRET", "")
 
-        if not self.app_id or not self.api_key or not self.api_secret:
-            raise ValueError("[XunfeiASR] 错误: 未完整配置讯飞凭证 (XUNFEI_APP_ID, XUNFEI_API_KEY, XUNFEI_API_SECRET)")
+        # 检查配置状态但不抛出异常
+        self.available = bool(self.app_id and self.api_key and self.api_secret)
 
-        self.available = True
-        print(f"[XunfeiASR] 已配置 - APPID: {self.app_id[:4]}***")
+        if self.available:
+            print(f"[XunfeiASR] 已配置 - APPID: {self.app_id[:4]}***")
+        else:
+            print("[XunfeiASR] 警告: 未完整配置讯飞凭证，服务不可用")
+
+    def _check_available(self):
+        """检查服务是否可用，不可用时抛出异常"""
+        if not self.available:
+            raise RuntimeError(
+                "讯飞 ASR 服务未配置。请设置环境变量: "
+                "XUNFEI_APP_ID, XUNFEI_API_KEY, XUNFEI_API_SECRET"
+            )
 
     def _create_auth_url(self) -> str:
         """
@@ -132,9 +144,10 @@ class XunfeiASRService:
             识别文本
 
         Raises:
+            RuntimeError: 服务未配置或识别过程中出错
             ConnectionError: 连接讯飞 API 失败
-            RuntimeError: 识别过程中出错
         """
+        self._check_available()
         full_text = ""
 
         try:
@@ -212,9 +225,10 @@ class XunfeiASRService:
             完整识别文本
 
         Raises:
+            RuntimeError: 服务未配置或识别过程中出错
             ConnectionError: 连接讯飞 API 失败
-            RuntimeError: 识别过程中出错
         """
+        self._check_available()
         full_text = ""
         xunfei_ws = None
         rec_text: dict[int, str] = {}
