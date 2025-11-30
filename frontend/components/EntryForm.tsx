@@ -1,5 +1,6 @@
 
 // EntryForm - 采购录入表单
+// v1.7 - UI 重构：隐藏相机/文件按钮，文本框多行滚动，提交按钮移至物品列表区域
 // v1.6 - 添加物品删除按钮，始终可见，Storm Glass 风格悬停效果
 // v1.5 - 重构语音 UI：移除浮动弹窗，集成到底部 bar，添加发光边框动画
 // v1.4 - 修复语音录入 WebSocket 自动关闭问题，支持连续录音
@@ -428,11 +429,28 @@ const WorksheetScreen: React.FC<{
                 <Icons.PlusCircle className="w-5 h-5 group-hover:text-harbor-blue transition-colors" />
                 <span className="font-medium text-sm">添加物品</span>
             </button>
+
+            {/* v1.7: 提交按钮移到这里，和物品列表同层级 */}
+            <button
+              onClick={onReview}
+              disabled={voiceStatus === 'recording' || voiceStatus === 'processing'}
+              className="w-full py-4 mt-4 rounded-glass-xl text-white font-semibold text-base transition-all active:scale-[0.98] border border-white/15 disabled:opacity-40 flex items-center justify-center gap-2"
+              style={{
+                background: 'linear-gradient(135deg, rgba(91,163,192,0.3) 0%, rgba(91,163,192,0.15) 100%)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                boxShadow: '0 4px 20px rgba(91,163,192,0.2), inset 0 1px 0 rgba(255,255,255,0.1)'
+              }}
+            >
+              <Icons.Check className="w-5 h-5" />
+              <span>确认提交</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Floating Action Island - Storm Glass with Integrated Voice Display */}
+      {/* v1.7: 简化底部栏，只保留语音按钮和文本显示 */}
       <div className="fixed bottom-6 left-4 right-4 z-50 safe-area-bottom">
         <div className="p-2 rounded-2xl border border-white/10"
              style={{
@@ -442,9 +460,9 @@ const WorksheetScreen: React.FC<{
                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
              }}>
 
-           {/* Main Row: Icons + Text Box + Submit */}
-           <div className="flex items-center gap-2">
-             {/* Hidden Inputs */}
+           {/* Main Row: Voice Button + Text Box (no submit button here) */}
+           <div className="flex items-start gap-2">
+             {/* Hidden Inputs - 暂时保留但不显示按钮 */}
              <input
                 type="file"
                 ref={cameraInputRef}
@@ -462,32 +480,14 @@ const WorksheetScreen: React.FC<{
                 className="hidden"
               />
 
-             {/* Left Icons Group */}
-             <div className="flex items-center gap-0.5">
-               {/* Camera Button */}
-               <button
-                 onClick={() => cameraInputRef.current?.click()}
-                 disabled={isAnalyzing || voiceStatus === 'recording'}
-                 className="w-11 h-11 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40"
-               >
-                 {isAnalyzing ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></div> : <Icons.Camera className="w-5 h-5" />}
-               </button>
-
-               {/* File Upload Button */}
-               <button
-                 onClick={() => fileInputRef.current?.click()}
-                 disabled={isAnalyzing || voiceStatus === 'recording'}
-                 className="w-11 h-11 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40"
-               >
-                 <Icons.Folder className="w-5 h-5" />
-               </button>
-
+             {/* v1.7: 只保留语音按钮 */}
+             <div className="flex items-center">
                {/* Voice Recording Button - Start or Stop */}
                {voiceStatus === 'recording' ? (
                  /* Stop Button - Red circle with white square SVG */
                  <button
                    onClick={onVoiceStop}
-                   className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-95"
+                   className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-95 flex-shrink-0"
                  >
                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                      <circle cx="14" cy="14" r="13" stroke="#ef4444" strokeWidth="2" className="animate-pulse" style={{ filter: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.6))' }} />
@@ -499,7 +499,7 @@ const WorksheetScreen: React.FC<{
                  <button
                    onClick={onVoiceStart}
                    disabled={isAnalyzing || voiceStatus === 'processing'}
-                   className="w-11 h-11 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40"
+                   className="w-11 h-11 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40 flex-shrink-0"
                  >
                    {voiceStatus === 'processing' ? (
                      <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
@@ -508,54 +508,84 @@ const WorksheetScreen: React.FC<{
                    )}
                  </button>
                )}
+
+               {/* v1.7: 注释掉相机和文件上传按钮
+               <button
+                 onClick={() => cameraInputRef.current?.click()}
+                 disabled={isAnalyzing || voiceStatus === 'recording'}
+                 className="w-11 h-11 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40"
+               >
+                 {isAnalyzing ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></div> : <Icons.Camera className="w-5 h-5" />}
+               </button>
+               <button
+                 onClick={() => fileInputRef.current?.click()}
+                 disabled={isAnalyzing || voiceStatus === 'recording'}
+                 className="w-11 h-11 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40"
+               >
+                 <Icons.Folder className="w-5 h-5" />
+               </button>
+               */}
              </div>
 
-             {/* Voice Text Display Box - Integrated in Bottom Bar */}
-             <div
-               className={`flex-1 h-11 rounded-xl px-3 flex items-center overflow-hidden transition-all duration-300 ${
-                 voiceStatus === 'recording'
-                   ? 'voice-recording-border'
-                   : 'border border-transparent'
-               }`}
-               style={{
-                 background: voiceStatus === 'recording' || transcriptionText
-                   ? 'rgba(255, 255, 255, 0.08)'
-                   : 'transparent',
-               }}
-             >
-               {transcriptionText ? (
-                 <p className="text-white/90 text-sm truncate">
-                   {transcriptionText}
-                   {voiceStatus === 'recording' && (
-                     <span className="inline-block w-0.5 h-4 bg-cyan-400 ml-1 animate-pulse" />
-                   )}
-                 </p>
-               ) : voiceStatus === 'recording' ? (
-                 <p className="text-white/50 text-sm flex items-center gap-2">
-                   <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                   正在聆听...
-                 </p>
-               ) : voiceStatus === 'processing' ? (
-                 <p className="text-white/50 text-sm">正在处理...</p>
-               ) : null}
-             </div>
-
-             {/* Submit Button */}
-             <button
-               onClick={onReview}
-               disabled={voiceStatus === 'recording' || voiceStatus === 'processing'}
-               className="px-5 py-2.5 rounded-xl text-white font-semibold text-sm transition-all active:scale-[0.98] border border-white/10 disabled:opacity-40 whitespace-nowrap"
-               style={{
-                 background: 'rgba(255, 255, 255, 0.15)',
-                 backdropFilter: 'blur(20px)',
-                 WebkitBackdropFilter: 'blur(20px)'
-               }}
-             >
-                确认提交
-             </button>
+             {/* v1.7: Voice Text Display Box - 多行动态显示，自动滚动到最后 */}
+             <TranscriptionBox
+               transcriptionText={transcriptionText}
+               voiceStatus={voiceStatus}
+             />
            </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// v1.7: 独立的转录文本显示组件 - 支持多行动态滚动
+const TranscriptionBox: React.FC<{
+  transcriptionText: string;
+  voiceStatus: RecordingStatus;
+}> = ({ transcriptionText, voiceStatus }) => {
+  const textRef = useRef<HTMLDivElement>(null);
+
+  // 自动滚动到底部
+  useEffect(() => {
+    if (textRef.current) {
+      textRef.current.scrollTop = textRef.current.scrollHeight;
+    }
+  }, [transcriptionText]);
+
+  return (
+    <div
+      ref={textRef}
+      className={`flex-1 min-h-[44px] max-h-[120px] rounded-xl px-3 py-2 overflow-y-auto transition-all duration-300 ${
+        voiceStatus === 'recording'
+          ? 'voice-recording-border'
+          : 'border border-transparent'
+      }`}
+      style={{
+        background: voiceStatus === 'recording' || transcriptionText
+          ? 'rgba(255, 255, 255, 0.08)'
+          : 'transparent',
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'rgba(255,255,255,0.2) transparent'
+      }}
+    >
+      {transcriptionText ? (
+        <p className="text-white/90 text-sm whitespace-pre-wrap break-words">
+          {transcriptionText}
+          {voiceStatus === 'recording' && (
+            <span className="inline-block w-0.5 h-4 bg-cyan-400 ml-1 animate-pulse align-middle" />
+          )}
+        </p>
+      ) : voiceStatus === 'recording' ? (
+        <p className="text-white/50 text-sm flex items-center gap-2">
+          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+          正在聆听...
+        </p>
+      ) : voiceStatus === 'processing' ? (
+        <p className="text-white/50 text-sm">正在处理...</p>
+      ) : (
+        <p className="text-white/30 text-sm">点击麦克风开始语音录入</p>
+      )}
     </div>
   );
 }
