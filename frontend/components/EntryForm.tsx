@@ -1,5 +1,5 @@
-
 // EntryForm - 采购录入表单
+// v1.8 - 语音录入交互优化：识别后可编辑文本，点击发送按钮才解析填充表单
 // v1.7 - UI 重构：隐藏相机/文件按钮，文本框多行滚动，提交按钮移至物品列表区域
 // v1.6 - 添加物品删除按钮，始终可见，Storm Glass 风格悬停效果
 // v1.5 - 重构语音 UI：移除浮动弹窗，集成到底部 bar，添加发光边框动画
@@ -213,6 +213,7 @@ const WorksheetScreen: React.FC<{
   voiceMessage: string;
   transcriptionText: string;
   showTranscription: boolean;
+  isSendingTranscription: boolean;  // v1.8: 是否正在发送解析
   onBack: () => void;
   onSupplierChange: (val: string) => void;
   onNotesChange: (val: string) => void;
@@ -223,19 +224,32 @@ const WorksheetScreen: React.FC<{
   onRemoveImage: (id: string) => void;
   onVoiceStart: () => void;
   onVoiceStop: () => void;
+  onTranscriptionChange: (text: string) => void;  // v1.8: 编辑转录文本
+  onSendTranscription: () => void;  // v1.8: 发送文本进行解析
   onReview: () => void;
 }> = ({
   items, supplier, notes, isAnalyzing, grandTotal, attachedImages,
-  voiceStatus, voiceMessage, transcriptionText, showTranscription,
-  onBack, onSupplierChange, onNotesChange, onItemChange, onAddItem, onRemoveItem, onImageUpload, onRemoveImage, onVoiceStart, onVoiceStop, onReview
+  voiceStatus, voiceMessage, transcriptionText, showTranscription, isSendingTranscription,
+  onBack, onSupplierChange, onNotesChange, onItemChange, onAddItem, onRemoveItem, onImageUpload, onRemoveImage, onVoiceStart, onVoiceStop, onTranscriptionChange, onSendTranscription, onReview
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevItemsLengthRef = useRef<number>(items.length);
+  const isInitialMountRef = useRef<boolean>(true);
 
+  // Scroll to top on initial mount, scroll to bottom only when items are added
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      if (isInitialMountRef.current) {
+        // Initial mount: scroll to top
+        scrollRef.current.scrollTop = 0;
+        isInitialMountRef.current = false;
+      } else if (items.length > prevItemsLengthRef.current) {
+        // Items were added: scroll to bottom to show new item
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+      prevItemsLengthRef.current = items.length;
     }
   }, [items.length]);
 
@@ -263,7 +277,10 @@ const WorksheetScreen: React.FC<{
          </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pb-40 space-y-6">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-6 pb-40 space-y-6 relative"
+      >
 
         {/* Info Section - Card Layer */}
         <GlassCard padding="md" className="space-y-4">
@@ -451,14 +468,23 @@ const WorksheetScreen: React.FC<{
 
       {/* Floating Action Island - Storm Glass with Integrated Voice Display */}
       {/* v1.7: 简化底部栏，只保留语音按钮和文本显示 */}
-      <div className="fixed bottom-6 left-4 right-4 z-50 safe-area-bottom">
-        <div className="p-2 rounded-2xl border border-white/10"
-             style={{
-               background: 'rgba(30, 30, 35, 0.75)',
-               backdropFilter: 'blur(40px) saturate(180%)',
-               WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-             }}>
+      <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
+        {/* Gradient fade above the voice bar */}
+        <div
+          className="h-24 pointer-events-none"
+          style={{
+            background: 'linear-gradient(to top, rgba(20, 20, 25, 1) 0%, transparent 100%)'
+          }}
+        />
+        {/* Voice bar container with padding */}
+        <div className="px-4 pb-6 pt-0" style={{ background: 'rgba(20, 20, 25, 1)' }}>
+          <div className="p-2 rounded-2xl border border-white/10"
+               style={{
+                 background: 'rgba(30, 30, 35, 0.75)',
+                 backdropFilter: 'blur(40px) saturate(180%)',
+                 WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+               }}>
 
            {/* Main Row: Voice Button + Text Box (no submit button here) */}
            <div className="flex items-start gap-2">
@@ -527,64 +553,115 @@ const WorksheetScreen: React.FC<{
                */}
              </div>
 
-             {/* v1.7: Voice Text Display Box - 多行动态显示，自动滚动到最后 */}
+             {/* v1.8: 可编辑的转录文本框 + 发送按钮 */}
              <TranscriptionBox
                transcriptionText={transcriptionText}
                voiceStatus={voiceStatus}
+               isSending={isSendingTranscription}
+               onTextChange={onTranscriptionChange}
+               onSend={onSendTranscription}
              />
            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// v1.7: 独立的转录文本显示组件 - 支持多行动态滚动
+// v1.8: 可编辑的转录文本组件 - 支持手动编辑和发送
 const TranscriptionBox: React.FC<{
   transcriptionText: string;
   voiceStatus: RecordingStatus;
-}> = ({ transcriptionText, voiceStatus }) => {
-  const textRef = useRef<HTMLDivElement>(null);
+  isSending: boolean;
+  onTextChange: (text: string) => void;
+  onSend: () => void;
+}> = ({ transcriptionText, voiceStatus, isSending, onTextChange, onSend }) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 自动滚动到底部
+  // 自动滚动到底部（录音时）
   useEffect(() => {
-    if (textRef.current) {
-      textRef.current.scrollTop = textRef.current.scrollHeight;
+    if (textareaRef.current && voiceStatus === 'recording') {
+      textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+    }
+  }, [transcriptionText, voiceStatus]);
+
+  // 动态调整高度
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const newHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 44), 120);
+      textareaRef.current.style.height = `${newHeight}px`;
     }
   }, [transcriptionText]);
 
+  const hasText = transcriptionText.trim().length > 0;
+  const canSend = hasText && voiceStatus !== 'recording' && !isSending;
+
   return (
-    <div
-      ref={textRef}
-      className={`flex-1 min-h-[44px] max-h-[120px] rounded-xl px-3 py-2 overflow-y-auto transition-all duration-300 ${
-        voiceStatus === 'recording'
-          ? 'voice-recording-border'
-          : 'border border-transparent'
-      }`}
-      style={{
-        background: voiceStatus === 'recording' || transcriptionText
-          ? 'rgba(255, 255, 255, 0.08)'
-          : 'transparent',
-        scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(255,255,255,0.2) transparent'
-      }}
-    >
-      {transcriptionText ? (
-        <p className="text-white/90 text-sm whitespace-pre-wrap break-words">
-          {transcriptionText}
-          {voiceStatus === 'recording' && (
-            <span className="inline-block w-0.5 h-4 bg-cyan-400 ml-1 animate-pulse align-middle" />
+    <div className="flex-1 flex items-end gap-2">
+      {/* 可编辑文本框 */}
+      <div
+        className={`flex-1 relative rounded-xl transition-all duration-300 ${
+          voiceStatus === 'recording'
+            ? 'voice-recording-border'
+            : hasText
+            ? 'border border-white/20'
+            : 'border border-transparent'
+        }`}
+        style={{
+          background: voiceStatus === 'recording' || hasText
+            ? 'rgba(255, 255, 255, 0.08)'
+            : 'transparent'
+        }}
+      >
+        <textarea
+          ref={textareaRef}
+          value={transcriptionText}
+          onChange={(e) => onTextChange(e.target.value)}
+          placeholder={
+            voiceStatus === 'recording'
+              ? '正在聆听...'
+              : voiceStatus === 'processing'
+              ? '正在处理...'
+              : '点击麦克风语音录入，或直接输入文字'
+          }
+          disabled={voiceStatus === 'recording'}
+          className="w-full min-h-[44px] max-h-[120px] rounded-xl px-3 py-2 bg-transparent text-white/90 text-sm placeholder-white/30 outline-none resize-none disabled:cursor-not-allowed"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(255,255,255,0.2) transparent'
+          }}
+        />
+        {/* 录音时的光标动画 */}
+        {voiceStatus === 'recording' && hasText && (
+          <span className="absolute bottom-2 right-3 w-0.5 h-4 bg-cyan-400 animate-pulse" />
+        )}
+        {/* 录音指示器 */}
+        {voiceStatus === 'recording' && !hasText && (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+        )}
+      </div>
+
+      {/* 发送按钮 - 只在有文本且非录音状态时显示 */}
+      {(hasText || isSending) && voiceStatus !== 'recording' && (
+        <button
+          onClick={onSend}
+          disabled={!canSend}
+          className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-95 disabled:opacity-40 flex-shrink-0"
+          style={{
+            background: canSend
+              ? 'linear-gradient(135deg, rgba(91,163,192,0.4) 0%, rgba(91,163,192,0.2) 100%)'
+              : 'rgba(255, 255, 255, 0.05)',
+            border: canSend ? '1px solid rgba(91,163,192,0.3)' : '1px solid transparent'
+          }}
+        >
+          {isSending ? (
+            <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+          ) : (
+            <Icons.ArrowRight className="w-5 h-5 text-white" />
           )}
-        </p>
-      ) : voiceStatus === 'recording' ? (
-        <p className="text-white/50 text-sm flex items-center gap-2">
-          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-          正在聆听...
-        </p>
-      ) : voiceStatus === 'processing' ? (
-        <p className="text-white/50 text-sm">正在处理...</p>
-      ) : (
-        <p className="text-white/30 text-sm">点击麦克风开始语音录入</p>
+        </button>
       )}
     </div>
   );
@@ -700,6 +777,50 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
   const [voiceMessage, setVoiceMessage] = useState('');
   const [transcriptionText, setTranscriptionText] = useState('');
   const [showTranscription, setShowTranscription] = useState(false);
+  const [isSendingTranscription, setIsSendingTranscription] = useState(false);  // v1.8: 发送解析状态
+
+  // v1.8: 用于追踪当前录音会话的基础文本（多次录音累加）
+  const baseTextRef = useRef<string>('');
+
+  // v1.8: 应用解析结果到表单
+  const applyParsedResult = (result: VoiceEntryResult) => {
+    // 填充表单数据（供应商=替换，备注=追加，物品=仅添加）
+
+    // 1. 供应商：REPLACE（替换）
+    if (result.supplier) {
+      console.log('[语音录入] 供应商替换:', result.supplier);
+      setSupplier(result.supplier);
+    }
+
+    // 2. 备注：APPEND（追加）
+    if (result.notes) {
+      setNotes(prev => {
+        if (!prev || prev.trim() === '') {
+          console.log('[语音录入] 备注设置（首次）:', result.notes);
+          return result.notes;
+        }
+        const merged = `${prev}；${result.notes}`;
+        console.log('[语音录入] 备注追加:', prev, '→', merged);
+        return merged;
+      });
+    }
+
+    // 3. 物品：ADD ONLY（仅添加，不删除现有）
+    if (result.items && result.items.length > 0) {
+      setItems(prev => {
+        const existingItems = prev.filter(item => item.name.trim() !== '');
+        const merged = [...existingItems, ...result.items];
+        console.log('[语音录入] 物品添加:', existingItems.length, '→', merged.length, '(新增', result.items.length, '项)');
+        return merged;
+      });
+    }
+
+    // 清除转录文本和基础文本
+    setTranscriptionText('');
+    baseTextRef.current = '';
+    setShowTranscription(false);
+    setVoiceMessage('');
+  };
 
   // 初始化语音服务回调
   useEffect(() => {
@@ -708,77 +829,45 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
         setVoiceStatus(status);
         setVoiceMessage(message || '');
 
-        // 显示转录面板
-        if (status === 'recording' || status === 'processing') {
+        // v1.8: 开始录音时，记录当前文本作为基础（用于追加）
+        if (status === 'recording') {
+          baseTextRef.current = transcriptionText;
           setShowTranscription(true);
-          if (status === 'recording') {
-            setTranscriptionText('');
-          }
         }
       },
       onPartialText: (text) => {
-        console.log('[语音录入] 实时文本:', text);
-        setTranscriptionText(text);
+        // v1.8: 实时文本追加到基础文本后面
+        const separator = baseTextRef.current && text ? ' ' : '';
+        const combined = baseTextRef.current + separator + text;
+        console.log('[语音录入] 实时文本:', text, '-> 合并:', combined);
+        setTranscriptionText(combined);
       },
+      // v1.8: 新增 - 识别完成，返回文本供编辑（不自动解析）
+      onTextFinal: (text) => {
+        // 追加到现有文本
+        const separator = baseTextRef.current && text ? ' ' : '';
+        const combined = baseTextRef.current + separator + text;
+        console.log('[语音录入] 识别完成:', text, '-> 合并:', combined);
+        setTranscriptionText(combined);
+        // 更新基础文本为合并后的结果
+        baseTextRef.current = combined;
+      },
+      // v1.8: 保留 onResult 用于兼容旧版后端
       onResult: (result, rawText) => {
-        console.log('[语音录入] 识别结果:', result);
-        console.log('[语音录入] 原始文本:', rawText);
-
-        // 显示完整识别文本
-        setTranscriptionText(rawText);
-
-        // 填充表单数据（修改逻辑：供应商=替换，备注=追加，物品=仅添加）
-
-        // 1. 供应商：REPLACE（替换）
-        if (result.supplier) {
-          console.log('[语音录入] 供应商替换:', result.supplier);
-          setSupplier(result.supplier);
-        }
-
-        // 2. 备注：APPEND（追加）
-        if (result.notes) {
-          setNotes(prev => {
-            if (!prev || prev.trim() === '') {
-              console.log('[语音录入] 备注设置（首次）:', result.notes);
-              return result.notes;
-            }
-            // 使用中文分号追加备注
-            const merged = `${prev}；${result.notes}`;
-            console.log('[语音录入] 备注追加:', prev, '→', merged);
-            return merged;
-          });
-        }
-
-        // 3. 物品：ADD ONLY（仅添加，不删除现有）
-        if (result.items && result.items.length > 0) {
-          setItems(prev => {
-            // 过滤掉空白占位行
-            const existingItems = prev.filter(item => item.name.trim() !== '');
-            const merged = [...existingItems, ...result.items];
-            console.log('[语音录入] 物品添加:', existingItems.length, '→', merged.length, '(新增', result.items.length, '项)');
-            return merged;
-          });
-        }
-
-        // v1.5: 立即清除文本框（结果已填入表单）
-        setShowTranscription(false);
-        setVoiceMessage('');
-        setTranscriptionText('');
+        console.log('[语音录入] 解析结果（旧版兼容）:', result);
+        applyParsedResult(result);
       },
       onError: (error) => {
         console.error('[语音录入] 错误:', error);
         setVoiceMessage(error);
-        setTranscriptionText('识别失败');
-        // 错误信息保留 2 秒后清除
+        // 错误时不清除已有文本，只显示错误提示
         setTimeout(() => {
-          setShowTranscription(false);
           setVoiceStatus('idle');
           setVoiceMessage('');
-          setTranscriptionText('');
         }, 2000);
       }
     });
-  }, []);
+  }, [transcriptionText]);
 
   const handleCategorySelect = (cat: CategoryType) => {
     setSelectedCategory(cat);
@@ -892,6 +981,38 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
     voiceEntryService.stopRecording();
   };
 
+  // v1.8: 发送转录文本进行解析
+  const handleSendTranscription = async () => {
+    if (!transcriptionText.trim() || isSendingTranscription) return;
+
+    setIsSendingTranscription(true);
+    console.log('[语音录入] 发送文本进行解析:', transcriptionText);
+
+    try {
+      const result = await voiceEntryService.extractFromText(transcriptionText);
+      if (result) {
+        console.log('[语音录入] 解析成功:', result);
+        applyParsedResult(result);
+      } else {
+        console.error('[语音录入] 解析返回空结果');
+        setVoiceMessage('解析失败，请重试');
+        setTimeout(() => setVoiceMessage(''), 2000);
+      }
+    } catch (error: any) {
+      console.error('[语音录入] 解析失败:', error);
+      setVoiceMessage('解析失败: ' + (error.message || '未知错误'));
+      setTimeout(() => setVoiceMessage(''), 2000);
+    } finally {
+      setIsSendingTranscription(false);
+    }
+  };
+
+  // v1.8: 手动编辑转录文本
+  const handleTranscriptionChange = (text: string) => {
+    setTranscriptionText(text);
+    baseTextRef.current = text;  // 同步更新基础文本
+  };
+
   const calculateGrandTotal = () => items.reduce((acc, curr) => acc + curr.total, 0);
 
   const handleWorksheetSubmit = () => {
@@ -928,7 +1049,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
       {step === 'CATEGORY' && (
         <CategoryScreen
           onSelect={handleCategorySelect}
-          onBack={() => setStep('CATEGORY')}
+          onBack={() => setStep('WELCOME')}
         />
       )}
       {step === 'WORKSHEET' && (
@@ -943,6 +1064,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
           voiceMessage={voiceMessage}
           transcriptionText={transcriptionText}
           showTranscription={showTranscription}
+          isSendingTranscription={isSendingTranscription}
           onBack={() => setStep('CATEGORY')}
           onSupplierChange={setSupplier}
           onNotesChange={setNotes}
@@ -953,6 +1075,8 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
           onRemoveImage={removeImage}
           onVoiceStart={handleVoiceStart}
           onVoiceStop={handleVoiceStop}
+          onTranscriptionChange={handleTranscriptionChange}
+          onSendTranscription={handleSendTranscription}
           onReview={handleWorksheetSubmit}
         />
       )}
