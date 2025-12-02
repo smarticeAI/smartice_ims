@@ -6,6 +6,7 @@
 
 **当前功能**：
 - 门店每日采购清单录入（支持手动录入 + 语音录入）
+- 用户认证（登录/注册，集成 UserCenter）
 - 图片识别功能暂时禁用（待后端 API 完成）
 
 ---
@@ -29,8 +30,13 @@
 |------|------|------|------|
 | 仪表板 | `components/Dashboard.tsx` | 数据概览与图表 | 已完成 |
 | 采购录入 | `components/EntryForm.tsx` | 手动+语音录入 | 已完成 |
+| 登录页面 | `components/LoginPage.tsx` | 用户登录 | 已完成 |
+| 注册页面 | `components/RegisterPage.tsx` | 邀请码注册 | 已完成 |
 | 侧边栏 | `components/Sidebar.tsx` | 导航菜单 | 已完成 |
 | UI 组件库 | `components/ui/*.tsx` | GlassCard, Button, Input | 已完成 |
+| 认证上下文 | `contexts/AuthContext.tsx` | 全局认证状态管理 | 已完成 |
+| 认证服务 | `services/authService.ts` | JWT Token 管理 | 已完成 |
+| 库存服务 | `services/inventoryService.ts` | 库存 API 调用 | 已完成 |
 | 语音服务 | `services/voiceEntryService.ts` | WebSocket 语音录入 | 已完成 |
 | 图片服务 | `services/imageService.ts` | 图片压缩/缩略图 | 已完成 |
 
@@ -276,8 +282,14 @@ frontend/
 │   │   └── index.ts        # 统一导出
 │   ├── Dashboard.tsx       # 仪表板
 │   ├── EntryForm.tsx       # 采购录入表单
+│   ├── LoginPage.tsx       # 登录页面
+│   ├── RegisterPage.tsx    # 注册页面
 │   └── Sidebar.tsx         # 侧边导航
+├── contexts/
+│   └── AuthContext.tsx     # 认证状态上下文
 ├── services/
+│   ├── authService.ts      # UserCenter 认证服务
+│   ├── inventoryService.ts # 库存 API 服务
 │   ├── voiceEntryService.ts # WebSocket 语音录入服务
 │   ├── imageService.ts     # 图片压缩/缩略图
 │   └── storageAdapter.ts   # 本地存储
@@ -298,6 +310,7 @@ frontend/
 | docs/DESIGN.md | UI 设计规范 |
 | docs/API.md | 后端 API 接口（待对接） |
 | docs/FORMS.md | 表单字段与验证规则 |
+| docs/SUPABASE_CONNECTION.md | Supabase 连接配置指南 |
 
 ---
 
@@ -334,8 +347,11 @@ npm run build    # 构建生产版本
 ### 环境变量 (.env)
 
 ```bash
-# 可选：覆盖后端 URL（默认 localhost:8000）
+# 语音录入后端（默认 localhost:8000）
 VITE_VOICE_BACKEND_URL=http://localhost:8000
+
+# UserCenter 认证服务（默认 localhost:8001）
+VITE_USER_CENTER_URL=http://localhost:8001
 ```
 
 **注意**：前端不存储 API Key，所有 AI 服务（讯飞、Qwen）通过后端调用

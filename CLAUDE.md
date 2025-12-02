@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-"有点东西餐饮管理有限公司"数据分析平台的数据录入系统，负责门店运营数据的采集与管理。
+"有点东西餐饮管理有限公司"数据分析平台，包含数据录入系统和统一用户中心。
 
 ---
 
@@ -16,12 +16,20 @@ InventoryEntryOfSmartICE/
 │   ├── src/styles/           # Tailwind CSS 样式
 │   └── CLAUDE.md             # 前端详细文档
 │
-├── backend/                  # FastAPI Python 后端
+├── backend/                  # FastAPI Python 后端 (语音录入)
 │   ├── app/
 │   │   ├── routes/           # API 路由
 │   │   ├── services/         # 业务服务
 │   │   └── models/           # 数据模型
 │   └── CLAUDE.md             # 后端详细文档
+│
+├── UserCenter/               # 统一用户中心 (认证与组织架构)
+│   ├── app/
+│   │   ├── api/v1/endpoints/ # API 端点
+│   │   ├── models/           # SQLAlchemy 模型
+│   │   └── schemas/          # Pydantic 模式
+│   ├── alembic/              # 数据库迁移
+│   └── CLAUDE.md             # UserCenter 详细文档
 │
 ├── keep-alive-worker/        # Cloudflare Worker 保活服务
 │   ├── index.js              # Worker 代码
@@ -40,6 +48,8 @@ InventoryEntryOfSmartICE/
 |------|------|------|
 | **前端** | React 19 + Vite 6 | TypeScript, Tailwind CSS v4 |
 | **后端** | FastAPI + Python 3.11 | uv 包管理 |
+| **数据库** | Supabase (PostgreSQL) | usercenter schema + public schema |
+| **认证** | JWT Token | access + refresh，UserCenter 管理 |
 | **语音识别** | 讯飞 ASR | WebSocket 实时流式 |
 | **AI 结构化** | 阿里云 Qwen | 语音文本 → JSON 提取 |
 | **任务队列** | Redis | 可选，支持限流 |
@@ -48,12 +58,16 @@ InventoryEntryOfSmartICE/
 
 ## 核心功能
 
-| 功能 | 说明 | 状态 |
-|------|------|------|
-| 采购清单录入 | 手动填写表单 | 已完成 |
-| 语音录入 | 实时语音 → 结构化数据 | 已完成 |
-| 仪表板 | 数据概览与图表 | 已完成 |
-| AI 图片识别 | 拍照/上传 → 自动填充 | 暂停（待后端API） |
+| 模块 | 功能 | 说明 | 状态 |
+|------|------|------|------|
+| **数据录入** | 采购清单录入 | 手动填写表单 | 已完成 |
+| | 语音录入 | 实时语音 → 结构化数据 | 已完成 |
+| | 仪表板 | 数据概览与图表 | 已完成 |
+| | AI 图片识别 | 拍照/上传 → 自动填充 | 暂停 |
+| **UserCenter** | 用户认证 | 登录/注册/JWT Token | 已完成 |
+| | 组织架构 | 集团/品牌/区域/城市/门店 | 已完成 |
+| | RBAC 权限 | 8个预置角色 + 权限管理 | 已完成 |
+| | 邀请码注册 | 员工通过邀请码加入 | 已完成 |
 
 ---
 
@@ -67,13 +81,22 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-### 后端启动
+### 后端启动 (语音录入)
 
 ```bash
 cd backend
 uv sync
 cp .env.example .env  # 填入 API Keys
 uv run uvicorn app.main:app --reload --port 8000
+```
+
+### UserCenter 启动
+
+```bash
+cd UserCenter
+uv sync
+cp .env.example .env  # 填入数据库连接
+uv run uvicorn app.main:app --reload --port 8001
 ```
 
 ### 环境变量
@@ -88,9 +111,19 @@ REDIS_URL=redis://localhost:6379/0  # 可选
 CORS_ORIGINS=https://your-domain.com  # 生产环境
 ```
 
-**frontend/.env** (可选):
+**frontend/.env**:
 ```bash
 VITE_VOICE_BACKEND_URL=http://localhost:8000
+VITE_USER_CENTER_URL=http://localhost:8001
+```
+
+**UserCenter/.env**:
+```bash
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db
+JWT_SECRET_KEY=your-secret-key
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
 **注意**：前端不存储 API Key，所有 AI 服务通过后端调用
@@ -127,7 +160,9 @@ VITE_VOICE_BACKEND_URL=http://localhost:8000
 | 文档 | 说明 |
 |------|------|
 | `frontend/CLAUDE.md` | 前端架构、组件、样式规范 |
-| `backend/CLAUDE.md` | 后端 API、服务、数据模型 |
+| `backend/CLAUDE.md` | 后端 API（语音录入）、服务、数据模型 |
+| `UserCenter/CLAUDE.md` | 用户中心架构、API、认证流程 |
+| `UserCenter/docs/DATABASE.md` | UserCenter 数据库 Schema（9表+1映射） |
 
 ---
 
