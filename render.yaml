@@ -1,7 +1,9 @@
-# Render Blueprint - 野百灵语音识别后端
-# v1.0 - Render 部署配置
+# Render Blueprint - 野百灵语音识别后端 + UserCenter
+# v2.0 - 添加 UserCenter 服务
+# Last updated: 2025-12-03
 
 services:
+  # 语音识别后端
   - type: web
     name: smartice-voice-backend
     runtime: python
@@ -24,3 +26,31 @@ services:
       - key: CORS_ORIGINS
         sync: false  # 部署后填入前端域名
     healthCheckPath: /api/voice/health
+
+  # UserCenter 用户中心
+  - type: web
+    name: smartice-usercenter
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: UserCenter
+    buildCommand: pip install uv && uv export --no-hashes --no-emit-project > requirements.txt && pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DATABASE_URL
+        sync: false  # 手动在 Dashboard 配置
+      - key: DATABASE_SCHEMA
+        value: "usercenter"
+      - key: JWT_SECRET_KEY
+        sync: false  # 手动在 Dashboard 配置
+      - key: SECRET_KEY
+        sync: false  # 手动在 Dashboard 配置
+      - key: APP_NAME
+        value: "UserCenter"
+      - key: DEBUG
+        value: "false"
+      - key: CORS_ORIGINS
+        sync: false  # 手动在 Dashboard 配置
+    healthCheckPath: /health
