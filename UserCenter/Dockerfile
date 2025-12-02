@@ -16,8 +16,8 @@ RUN pip install uv
 # Copy dependency files
 COPY pyproject.toml ./
 
-# Export and install dependencies
-RUN uv export --no-hashes > requirements.txt && pip install -r requirements.txt
+# Export and install dependencies (--no-emit-project skips building current package)
+RUN uv export --no-hashes --no-emit-project > requirements.txt && pip install -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/
