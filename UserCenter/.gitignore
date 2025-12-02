@@ -1,0 +1,23 @@
+# Environment (CRITICAL - contains real secrets)
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Alembic
+alembic/versions/*.pyc
+
+# Claude Code
+.claude/
