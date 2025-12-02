@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase 连接测试</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #5BA3C0;
+      color: white;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #4a8ca6;
+    }
+    pre {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .success { color: #6B9E8A; }
+    .error { color: #E85A4F; }
+  </style>
+</head>
+<body>
+  <h1>Supabase 连接测试</h1>
+
+  <div class="test-section">
+    <h2>配置信息</h2>
+    <p>URL: <code>https://wdpeoyugsxqnpwwtkqsl.supabase.co</code></p>
+    <p>Schema: <code>ims</code></p>
+  </div>
+
+  <div class="test-section">
+    <h2>测试操作</h2>
+    <button onclick="testConnection()">1. 测试基础连接</button>
+    <button onclick="testSuppliers()">2. 测试查询 suppliers</button>
+    <button onclick="testProducts()">3. 测试查询 products</button>
+    <button onclick="testUnits()">4. 测试查询 units</button>
+    <button onclick="testPublicSchema()">5. 测试 public schema</button>
+  </div>
+
+  <div class="test-section">
+    <h2>测试结果</h2>
+    <pre id="output">等待测试...</pre>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://wdpeoyugsxqnpwwtkqsl.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkcGVveXVnc3hxbnB3d3RrcXNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQxNDgwNzgsImV4cCI6MjA1OTcyNDA3OH0.9bUpuZCOZxDSH3KsIu6FwWZyAvnV5xPJGNpO3luxWOE';
+
+    // 创建 Supabase 客户端（使用 ims schema）
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      db: {
+        schema: 'ims'
+      },
+      auth: {
+        persistSession: false
+      },
+      global: {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Prefer': 'return=representation'
+        }
+      }
+    });
+
+    function log(message, isError = false) {
+      const output = document.getElementById('output');
+      const timestamp = new Date().toLocaleTimeString();
+      const className = isError ? 'error' : 'success';
+      output.innerHTML += `\n[${timestamp}] <span class="${className}">${message}</span>`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    async function testConnection() {
+      log('测试基础连接...');
+      try {
+        const { data, error } = await supabase
+          .from('supplier')
+          .select('supplier_id')
+          .limit(1);
+
+        if (error) {
+          log(`❌ 连接失败: ${error.message}`, true);
+          log(`错误详情: ${JSON.stringify(error, null, 2)}`, true);
+        } else {
+          log(`✅ 连接成功! 返回数据: ${JSON.stringify(data, null, 2)}`);
+        }
+      } catch (err) {
+        log(`❌ 异常: ${err.message}`, true);
+      }
+    }
+
+    async function testSuppliers() {
+      log('测试查询 suppliers 表...');
+      try {
+        const { data, error, count } = await supabase
+          .from('supplier')
+          .select('*', { count: 'exact' })
+          .eq('is_active', true)
+          .limit(5);
+
+        if (error) {
+          log(`❌ 查询失败: ${error.message}`, true);
+          log(`错误详情: ${JSON.stringify(error, null, 2)}`, true);
+        } else {
+          log(`✅ 查询成功! 总数: ${count}, 返回: ${data?.length || 0} 条`);
+          log(`数据示例: ${JSON.stringify(data?.[0] || '无数据', null, 2)}`);
+        }
+      } catch (err) {
+        log(`❌ 异常: ${err.message}`, true);
+      }
+    }
+
+    async function testProducts() {
+      log('测试查询 products 表...');
+      try {
+        const { data, error, count } = await supabase
+          .from('product')
+          .select('*', { count: 'exact' })
+          .eq('is_active', true)
+          .limit(5);
+
+        if (error) {
+          log(`❌ 查询失败: ${error.message}`, true);
+        } else {
+          log(`✅ 查询成功! 总数: ${count}, 返回: ${data?.length || 0} 条`);
+          log(`数据示例: ${JSON.stringify(data?.[0] || '无数据', null, 2)}`);
+        }
+      } catch (err) {
+        log(`❌ 异常: ${err.message}`, true);
+      }
+    }
+
+    async function testUnits() {
+      log('测试查询 unit_of_measure 表...');
+      try {
+        const { data, error, count } = await supabase
+          .from('unit_of_measure')
+          .select('*', { count: 'exact' })
+          .limit(10);
+
+        if (error) {
+          log(`❌ 查询失败: ${error.message}`, true);
+        } else {
+          log(`✅ 查询成功! 总数: ${count}, 返回: ${data?.length || 0} 条`);
+          log(`单位列表: ${data?.map(u => u.unit_name).join(', ') || '无数据'}`);
+        }
+      } catch (err) {
+        log(`❌ 异常: ${err.message}`, true);
+      }
+    }
+
+    async function testPublicSchema() {
+      log('测试 public schema（对比）...');
+      try {
+        // 临时创建一个使用 public schema 的客户端
+        const publicClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          db: { schema: 'public' }
+        });
+
+        const { data, error } = await publicClient
+          .from('supplier')
+          .select('supplier_id')
+          .limit(1);
+
+        if (error) {
+          log(`❌ public schema 查询失败: ${error.message}`, true);
+        } else {
+          log(`✅ public schema 查询成功! 数据: ${JSON.stringify(data, null, 2)}`);
+        }
+      } catch (err) {
+        log(`❌ 异常: ${err.message}`, true);
+      }
+    }
+
+    // 页面加载时显示欢迎信息
+    window.onload = () => {
+      log('Supabase 客户端已初始化');
+      log('点击上方按钮开始测试');
+    };
+  </script>
+</body>
+</html>
