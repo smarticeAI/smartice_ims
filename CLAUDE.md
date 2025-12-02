@@ -111,9 +111,10 @@ REDIS_URL=redis://localhost:6379/0  # 可选
 CORS_ORIGINS=https://your-domain.com  # 生产环境
 ```
 
-**frontend/.env** (可选):
+**frontend/.env**:
 ```bash
 VITE_VOICE_BACKEND_URL=http://localhost:8000
+VITE_USER_CENTER_URL=http://localhost:8001
 ```
 
 **UserCenter/.env**:
