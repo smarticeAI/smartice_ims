@@ -1,0 +1,98 @@
+# SmartICE Inventory Entry - Docker Compose Configuration
+# v1.0 - Backend + UserCenter deployment
+# Deployment target: Volcengine ECS (115.190.75.13)
+
+services:
+  # Voice Entry Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartice-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - XUNFEI_APP_ID=${XUNFEI_APP_ID}
+      - XUNFEI_API_KEY=${XUNFEI_API_KEY}
+      - XUNFEI_API_SECRET=${XUNFEI_API_SECRET}
+      - QWEN_API_KEY=${QWEN_API_KEY}
+      - QWEN_MODEL=${QWEN_MODEL:-qwen-plus}
+      - REDIS_URL=${REDIS_URL:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://inv.smartice.ai}
+    networks:
+      - smartice-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/voice/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # UserCenter Authentication Service
+  usercenter:
+    build:
+      context: ./UserCenter
+      dockerfile: Dockerfile
+    container_name: smartice-usercenter
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - APP_NAME=${APP_NAME:-UserCenter}
+      - APP_VERSION=${APP_VERSION:-0.1.0}
+      - DEBUG=${DEBUG:-false}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_SCHEMA=${DATABASE_SCHEMA:-usercenter}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - CORS_ORIGINS=${UC_CORS_ORIGINS:-["https://inv.smartice.ai"]}
+    networks:
+      - smartice-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: smartice-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - usercenter
+    networks:
+      - smartice-network
+
+  # Optional: Redis for task queue
+  redis:
+    image: redis:7-alpine
+    container_name: smartice-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - smartice-network
+    profiles:
+      - with-redis
+
+networks:
+  smartice-network:
+    driver: bridge
+
+volumes:
+  redis-data:

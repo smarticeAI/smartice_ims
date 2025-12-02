@@ -1,0 +1,71 @@
+# SmartICE Volcengine Deployment Workflow
+# v1.0 - Auto-deploy backend + UserCenter to Volcengine ECS
+# Triggered on push to main branch
+
+name: Deploy to Volcengine
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'UserCenter/**'
+      - 'docker-compose.yml'
+      - 'nginx/**'
+      - '.github/workflows/deploy-volcengine.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Volcengine ECS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VOLCENGINE_HOST }}
+          username: ${{ secrets.VOLCENGINE_USER }}
+          password: ${{ secrets.VOLCENGINE_PASSWORD }}
+          script: |
+            # Navigate to project directory
+            cd /opt/smartice
+
+            # Pull latest code
+            git pull origin main
+
+            # Stop existing containers
+            docker compose down
+
+            # Rebuild and start containers
+            docker compose build --no-cache
+            docker compose up -d
+
+            # Clean up old images
+            docker image prune -f
+
+            # Show status
+            docker compose ps
+
+            echo "Deployment completed at $(date)"
+
+      - name: Health Check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VOLCENGINE_HOST }}
+          username: ${{ secrets.VOLCENGINE_USER }}
+          password: ${{ secrets.VOLCENGINE_PASSWORD }}
+          script: |
+            # Wait for services to start
+            sleep 15
+
+            # Check backend health
+            curl -f http://localhost:8000/api/voice/health || echo "Backend health check failed"
+
+            # Check usercenter health
+            curl -f http://localhost:8001/health || echo "UserCenter health check failed"
+
+            echo "Health checks completed"
