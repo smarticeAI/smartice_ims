@@ -1,6 +1,7 @@
 /**
  * 入库数据提交服务
  * 处理采购数据从前端到数据库的完整流程
+ * v1.1 - 合并 PR #6 完整实现
  */
 
 import { DailyLog, ProcurementItem } from '../types';

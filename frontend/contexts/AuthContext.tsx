@@ -1,6 +1,7 @@
 /**
  * 认证状态管理 Context
  * 提供全局用户认证状态和相关方法
+ * v1.1 - 合并 PR #6 完整认证实现
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
@@ -188,3 +189,5 @@ export function RequireAuth({ children, fallback }: RequireAuthProps) {
 
   return <>{children}</>;
 }
+
+export default AuthContext;
