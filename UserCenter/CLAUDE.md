@@ -76,7 +76,7 @@ UserCenter/
 ```bash
 # 1. 安装依赖
 cd UserCenter
-poetry install
+uv sync
 
 # 2. 配置环境变量
 cp .env.example .env
@@ -87,13 +87,13 @@ cp .env.example .env
 # CREATE SCHEMA IF NOT EXISTS usercenter;
 
 # 4. 运行数据库迁移
-poetry run alembic upgrade head
+uv run alembic upgrade head
 
 # 5. 初始化种子数据
-poetry run python scripts/seed_data.py
+uv run python scripts/seed_data.py
 
 # 6. 启动服务
-poetry run uvicorn app.main:app --reload --port 8001
+uv run uvicorn app.main:app --reload --port 8001
 
 # 访问
 # API 文档: http://localhost:8001/api/v1/docs

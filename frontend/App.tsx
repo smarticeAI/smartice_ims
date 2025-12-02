@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -7,6 +6,7 @@ import { EntryForm } from './components/EntryForm';
 // import { DesignAssistant } from './components/DesignAssistant';
 import { DailyLog, AppView } from './types';
 import { Icons } from './constants';
+import { AuthProvider } from './contexts/AuthContext';
 
 const INITIAL_DATA: DailyLog[] = [
   { 
@@ -139,32 +139,34 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="fixed inset-0 flex text-primary font-sans overflow-hidden">
-      <Sidebar
-        currentView={currentView}
-        onChangeView={setCurrentView}
-        isOpen={sidebarOpen}
-        toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-      />
+    <AuthProvider>
+      <div className="fixed inset-0 flex text-primary font-sans overflow-hidden">
+        <Sidebar
+          currentView={currentView}
+          onChangeView={setCurrentView}
+          isOpen={sidebarOpen}
+          toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        />
 
-      <div className="flex-1 flex flex-col h-full relative w-full">
-        {/* Mobile Header Button - Storm Glass */}
-        {currentView !== AppView.NEW_ENTRY && (
-          <div className="md:hidden pt-6 px-4 pb-2 flex items-center justify-between">
-             <span className="text-xl font-bold text-white">门店管家</span>
-             <button onClick={() => setSidebarOpen(true)} className="p-2 text-white/70 hover:text-white">
-               <Icons.Menu className="w-6 h-6" />
-             </button>
-          </div>
-        )}
+        <div className="flex-1 flex flex-col h-full relative w-full">
+          {/* Mobile Header Button - Storm Glass */}
+          {currentView !== AppView.NEW_ENTRY && (
+            <div className="md:hidden pt-6 px-4 pb-2 flex items-center justify-between">
+               <span className="text-xl font-bold text-white">门店管家</span>
+               <button onClick={() => setSidebarOpen(true)} className="p-2 text-white/70 hover:text-white">
+                 <Icons.Menu className="w-6 h-6" />
+               </button>
+            </div>
+          )}
 
-        <main className={`flex-1 ${currentView === AppView.DASHBOARD ? 'overflow-hidden' : 'overflow-y-auto'} ${currentView === AppView.NEW_ENTRY ? 'p-0' : 'p-4 md:p-8'} max-w-5xl mx-auto w-full`}>
-            {currentView === AppView.DASHBOARD && <Dashboard logs={logs} />}
-            {currentView === AppView.NEW_ENTRY && <EntryForm onSave={handleSaveEntry} userName={CURRENT_USER_NAME} />}
-            {currentView === AppView.HISTORY && <HistoryView />}
-        </main>
+          <main className={`flex-1 ${currentView === AppView.DASHBOARD ? 'overflow-hidden' : 'overflow-y-auto'} ${currentView === AppView.NEW_ENTRY ? 'p-0' : 'p-4 md:p-8'} max-w-5xl mx-auto w-full`}>
+              {currentView === AppView.DASHBOARD && <Dashboard logs={logs} />}
+              {currentView === AppView.NEW_ENTRY && <EntryForm onSave={handleSaveEntry} userName={CURRENT_USER_NAME} />}
+              {currentView === AppView.HISTORY && <HistoryView />}
+          </main>
+        </div>
       </div>
-    </div>
+    </AuthProvider>
   );
 };
 
