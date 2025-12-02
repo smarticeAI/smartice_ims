@@ -1,5 +1,5 @@
 // Cloudflare Worker - SmartICE 后端保活
-// v1.0 - 定时 ping Render 后端，防止休眠
+// v1.1 - 每 3 分钟 ping Render 后端，防止休眠 (从 5 分钟缩短)
 
 const BACKEND_HEALTH_URL = 'https://inventoryentryofsmartice.onrender.com/api/voice/health';
 
