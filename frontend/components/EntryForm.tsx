@@ -13,8 +13,11 @@ import { DailyLog, ProcurementItem, CategoryType, AttachedImage } from '../types
 // import { parseDailyReport } from '../services/geminiService';
 import { compressImage, generateThumbnail, formatFileSize } from '../services/imageService';
 import { voiceEntryService, RecordingStatus, VoiceEntryResult } from '../services/voiceEntryService';
+import { submitProcurement, formatSubmitResult } from '../services/inventoryService';
+import { useAuth } from '../contexts/AuthContext';
 import { Icons } from '../constants';
-import { GlassCard, Button, Input } from './ui';
+import { GlassCard, Button, Input, AutocompleteInput } from './ui';
+import { searchSuppliers, searchProducts } from '../services/supabaseService';
 
 interface EntryFormProps {
   onSave: (log: Omit<DailyLog, 'id'>) => void;
@@ -282,11 +285,14 @@ const WorksheetScreen: React.FC<{
 
         {/* Info Section - Card Layer */}
         <GlassCard padding="md" className="space-y-4">
-          <Input
+          <AutocompleteInput
             label="供应商全称"
             value={supplier}
-            onChange={(e) => onSupplierChange(e.target.value)}
-            placeholder="供应商名称"
+            onChange={onSupplierChange}
+            placeholder="输入供应商名称..."
+            searchFn={searchSuppliers}
+            debounceMs={300}
+            minChars={1}
           />
           <div>
              <label className="block text-[20px] tracking-wider text-zinc-500 font-bold mb-2 ml-1">
@@ -369,12 +375,15 @@ const WorksheetScreen: React.FC<{
               <GlassCard key={index} padding="md" className="relative group">
                  {/* Top Row: Name & Delete */}
                  <div className="flex items-start justify-between mb-4">
-                    <input
-                      type="text"
-                      placeholder="商品名称"
+                    <AutocompleteInput
                       value={item.name}
-                      onChange={(e) => onItemChange(index, 'name', e.target.value)}
-                      className="flex-1 bg-transparent text-[13px] font-bold text-primary placeholder-muted outline-none"
+                      onChange={(val) => onItemChange(index, 'name', val)}
+                      placeholder="商品名称"
+                      searchFn={searchProducts}
+                      variant="inline"
+                      inputClassName="text-[13px] font-bold text-primary placeholder-muted"
+                      debounceMs={250}
+                      minChars={1}
                     />
                     <button
                       onClick={() => onRemoveItem(index)}
@@ -664,9 +673,12 @@ const SummaryScreen: React.FC<{
   supplier: string;
   notes: string;
   grandTotal: number;
+  isSubmitting: boolean;
+  submitMessage: string;
+  submitError: string | null;
   onBack: () => void;
   onConfirm: () => void;
-}> = ({ items, supplier, notes, grandTotal, onBack, onConfirm }) => {
+}> = ({ items, supplier, notes, grandTotal, isSubmitting, submitMessage, submitError, onBack, onConfirm }) => {
   return (
     <div className="h-full animate-slide-in flex flex-col relative">
       <div className="px-6 py-5 flex items-center gap-4">
@@ -677,6 +689,48 @@ const SummaryScreen: React.FC<{
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-32">
+        {/* 错误提示框 - 显示在顶部 */}
+        {submitError && (
+          <div className="mb-4 p-4 rounded-glass-lg border border-ios-red/30 animate-slide-in"
+               style={{
+                 background: 'rgba(232, 90, 79, 0.15)',
+                 backdropFilter: 'blur(24px)',
+                 WebkitBackdropFilter: 'blur(24px)',
+                 boxShadow: '0 4px 24px rgba(232, 90, 79, 0.2)'
+               }}>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-ios-red/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icons.X className="w-4 h-4 text-ios-red" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-ios-red mb-1">提交失败</p>
+                <p className="text-sm text-white/90 whitespace-pre-wrap">{submitError}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 成功消息框 - 显示在顶部 */}
+        {submitMessage && !submitError && (
+          <div className="mb-4 p-4 rounded-glass-lg border border-ios-green/30 animate-slide-in"
+               style={{
+                 background: 'rgba(107, 158, 138, 0.15)',
+                 backdropFilter: 'blur(24px)',
+                 WebkitBackdropFilter: 'blur(24px)',
+                 boxShadow: '0 4px 24px rgba(107, 158, 138, 0.2)'
+               }}>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-ios-green/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icons.Check className="w-4 h-4 text-ios-green" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-ios-green mb-1">提交成功</p>
+                <p className="text-sm text-white/90 whitespace-pre-wrap">{submitMessage}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Glass Receipt Card - Vintage Postcard Glassmorphism */}
         <GlassCard variant="elevated" padding="lg" className="relative overflow-hidden">
            {/* Vintage ambient glow */}
@@ -735,7 +789,10 @@ const SummaryScreen: React.FC<{
       <div className="fixed bottom-6 left-4 right-4 z-50 safe-area-bottom">
          <button
            onClick={onConfirm}
-           className="w-full py-4 rounded-2xl text-white font-semibold text-lg transition-all active:scale-[0.98] border border-white/10 flex items-center justify-center gap-2"
+           disabled={isSubmitting}
+           className={`w-full py-4 rounded-2xl text-white font-semibold text-lg transition-all border border-white/10 flex items-center justify-center gap-2 ${
+             isSubmitting ? 'opacity-60 cursor-not-allowed' : 'active:scale-[0.98] hover:bg-white/5'
+           }`}
            style={{
              background: 'rgba(30, 30, 35, 0.75)',
              backdropFilter: 'blur(40px) saturate(180%)',
@@ -743,8 +800,17 @@ const SummaryScreen: React.FC<{
              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
            }}
          >
-            <Icons.Check className="w-5 h-5" />
-            <span>确认入库</span>
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>提交中...</span>
+              </>
+            ) : (
+              <>
+                <Icons.Check className="w-5 h-5" />
+                <span>确认入库</span>
+              </>
+            )}
          </button>
       </div>
     </div>
@@ -826,6 +892,14 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
       setIsSendingTranscription(false);
     }
   };
+
+  // 数据库提交状态
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // 获取认证信息
+  const { storeId, employeeId } = useAuth();
 
   // 初始化语音服务回调
   // v1.8: 识别完成后仅显示文本，不自动填充，需点击发送按钮
@@ -994,17 +1068,50 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
   const calculateGrandTotal = () => items.reduce((acc, curr) => acc + curr.total, 0);
 
   const handleWorksheetSubmit = () => {
-    // Validate minimally
-    if (items.filter(i => i.name.trim() !== '').length === 0) {
+    // 检查是否有物品
+    if (items.length === 0) {
         alert("请至少录入一项物品");
         return;
     }
+
+    // 检查是否有物品名称为空
+    const emptyNameItems = items.filter(i => i.name.trim() === '');
+    if (emptyNameItems.length > 0) {
+        alert(`请填写商品名称（共有 ${emptyNameItems.length} 项物品未填写名称）`);
+        return;
+    }
+
+    // 检查是否有有效物品
+    const validItems = items.filter(i => i.name.trim() !== '');
+    if (validItems.length === 0) {
+        alert("请至少录入一项物品");
+        return;
+    }
+
+    // 检查是否有价格为空或为0
+    const invalidPriceItems = validItems.filter(i => !i.unitPrice || i.unitPrice <= 0);
+    if (invalidPriceItems.length > 0) {
+        const names = invalidPriceItems.map(i => i.name).join('、');
+        alert(`请填写单价（以下物品单价无效：${names}）`);
+        return;
+    }
+
+    // 检查是否有数量为空或为0
+    const invalidQuantityItems = validItems.filter(i => !i.quantity || i.quantity <= 0);
+    if (invalidQuantityItems.length > 0) {
+        const names = invalidQuantityItems.map(i => i.name).join('、');
+        alert(`请填写数量（以下物品数量无效：${names}）`);
+        return;
+    }
+
     setStep('SUMMARY');
   };
 
-  const handleSummaryConfirm = () => {
+  const handleSummaryConfirm = async () => {
     const validItems = items.filter(i => i.name.trim() !== '');
-    onSave({
+
+    // 构建日志数据
+    const logData: Omit<DailyLog, 'id'> = {
       date: new Date().toISOString(),
       category: selectedCategory,
       supplier: supplier || '未知供应商',
@@ -1013,7 +1120,57 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
       notes: notes,
       status: 'Stocked',
       attachments: attachedImages.length > 0 ? attachedImages : undefined
-    });
+    };
+
+    // 清除之前的错误信息
+    setSubmitError(null);
+
+    // 提交到数据库
+    if (storeId && employeeId) {
+      setIsSubmitting(true);
+      setSubmitMessage('正在同步到数据库...');
+
+      try {
+        const result = await submitProcurement(logData, storeId, employeeId);
+
+        // 检查是否提交成功
+        if (!result.success && result.errors.length > 0) {
+          // 提交失败：显示错误，保留在当前页面
+          console.error('[EntryForm] 数据库提交失败:', result.errors);
+          setSubmitError(result.errors.join('\n'));
+          setIsSubmitting(false);
+          setSubmitMessage('');
+          return; // 不继续执行后续操作
+        }
+
+        // 提交成功：显示成功消息
+        const message = formatSubmitResult(result);
+        setSubmitMessage(message);
+
+        // 保存到本地（仅在提交成功后）
+        onSave(logData);
+
+        // 显示结果 2 秒后清除状态并返回主页
+        setTimeout(() => {
+          setSubmitMessage('');
+          setIsSubmitting(false);
+          setStep('WELCOME'); // 返回主页
+        }, 2000);
+
+      } catch (err) {
+        // 捕获异常：显示错误，保留在当前页面
+        console.error('[EntryForm] 提交异常:', err);
+        const errorMessage = err instanceof Error ? err.message : '未知错误';
+        setSubmitError(`数据库同步失败: ${errorMessage}`);
+        setIsSubmitting(false);
+        setSubmitMessage('');
+      }
+    } else {
+      // 未登录：显示错误提示
+      console.warn('[EntryForm] 未登录，无法提交数据库');
+      setSubmitError('未登录，请先登录后再提交数据');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1064,6 +1221,9 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
           supplier={supplier}
           notes={notes}
           grandTotal={calculateGrandTotal()}
+          isSubmitting={isSubmitting}
+          submitMessage={submitMessage}
+          submitError={submitError}
           onBack={() => setStep('WORKSHEET')}
           onConfirm={handleSummaryConfirm}
         />
