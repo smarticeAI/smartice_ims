@@ -156,21 +156,61 @@ export const Icons = {
       d: "M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
     })),
 
-  ChevronRight: ({ className }: { className?: string }) => 
-    React.createElement("svg", { 
-      xmlns: "http://www.w3.org/2000/svg", 
-      fill: "none", 
-      viewBox: "0 0 24 24", 
-      strokeWidth: 2.5, 
-      stroke: "currentColor", 
-      className: className 
-    }, 
-    React.createElement("path", { 
-      strokeLinecap: "round", 
-      strokeLinejoin: "round", 
-      d: "M8.25 4.5l7.5 7.5-7.5 7.5" 
+  ChevronRight: ({ className }: { className?: string }) =>
+    React.createElement("svg", {
+      xmlns: "http://www.w3.org/2000/svg",
+      fill: "none",
+      viewBox: "0 0 24 24",
+      strokeWidth: 2.5,
+      stroke: "currentColor",
+      className: className
+    },
+    React.createElement("path", {
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      d: "M8.25 4.5l7.5 7.5-7.5 7.5"
     })),
-    
+
+  // v2.0: 下拉箭头图标（用户菜单）
+  ChevronDown: ({ className }: { className?: string }) =>
+    React.createElement("svg", {
+      xmlns: "http://www.w3.org/2000/svg",
+      fill: "none",
+      viewBox: "0 0 24 24",
+      strokeWidth: 2.5,
+      stroke: "currentColor",
+      className: className
+    },
+    React.createElement("path", {
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      d: "M19.5 8.25l-7.5 7.5-7.5-7.5"
+    })),
+
+  // v2.0: 退出登录图标
+  Logout: ({ className }: { className?: string }) =>
+    React.createElement("svg", {
+      xmlns: "http://www.w3.org/2000/svg",
+      fill: "none",
+      viewBox: "0 0 24 24",
+      strokeWidth: 2,
+      stroke: "currentColor",
+      className: className
+    },
+    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" })),
+
+  // v2.1: 钥匙图标（修改密码）
+  Key: ({ className }: { className?: string }) =>
+    React.createElement("svg", {
+      xmlns: "http://www.w3.org/2000/svg",
+      fill: "none",
+      viewBox: "0 0 24 24",
+      strokeWidth: 2,
+      stroke: "currentColor",
+      className: className
+    },
+    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" })),
+
   Trash: ({ className }: { className?: string }) => 
     React.createElement("svg", { 
       xmlns: "http://www.w3.org/2000/svg", 
@@ -238,6 +278,18 @@ export const Icons = {
       className: className
     },
     React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" })),
+
+  // 加号图标
+  Plus: ({ className }: { className?: string }) =>
+    React.createElement("svg", {
+      xmlns: "http://www.w3.org/2000/svg",
+      viewBox: "0 0 24 24",
+      fill: "none",
+      strokeWidth: 2,
+      stroke: "currentColor",
+      className: className
+    },
+    React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 4.5v15m7.5-7.5h-15" })),
 
   // 停止图标 (方块)
   Stop: ({ className }: { className?: string }) =>
