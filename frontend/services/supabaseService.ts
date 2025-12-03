@@ -1,8 +1,9 @@
 /**
  * Supabase 数据库服务
- * v3.0 - 简化表结构：移除 SKU 依赖，支持自由文本单位，图片分类
+ * v3.1 - 添加获取全部产品/供应商函数（用于下拉选择器）
  *
  * 变更历史：
+ * - v3.1: 新增 getAllProducts、getAllSuppliers 用于下拉列表展示全部选项
  * - v3.0: 简化 ims_material_price 表，移除 SKU，改为直接关联 material
  * - v2.3: 新增 searchUnits 函数用于单位自动完成输入
  * - v2.2: 更新表名映射（ims_product→ims_material, ims_unit_of_measure→ims_ref_unit等）
@@ -450,4 +451,42 @@ export function clearSearchCache(): void {
   suppliersCache = null;
   productsCache = null;
   unitsCache = null;
+}
+
+// ============ v3.1: 获取全部选项（用于下拉选择器） ============
+
+/**
+ * 获取全部产品列表（用于下拉选择器）
+ * @returns 全部产品选项列表
+ */
+export async function getAllProductsAsOptions(): Promise<AutocompleteOption[]> {
+  // 使用缓存
+  if (!productsCache) {
+    productsCache = await getProducts();
+  }
+
+  return productsCache.map(p => ({
+    id: p.id,
+    label: p.name,
+    value: p.name,
+    sublabel: p.code || undefined,
+  }));
+}
+
+/**
+ * 获取全部供应商列表（用于下拉选择器）
+ * @returns 全部供应商选项列表
+ */
+export async function getAllSuppliersAsOptions(): Promise<AutocompleteOption[]> {
+  // 使用缓存
+  if (!suppliersCache) {
+    suppliersCache = await getSuppliers();
+  }
+
+  return suppliersCache.map(s => ({
+    id: s.id,
+    label: s.name,
+    value: s.name,
+    sublabel: s.contact_person || undefined,
+  }));
 }

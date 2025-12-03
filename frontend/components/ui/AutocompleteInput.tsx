@@ -1,8 +1,9 @@
 /**
  * 自动完成输入框组件
- * v2.0 - 支持 extraOptions（静态选项，如"其他"）
+ * v3.0 - 添加倒三角下拉按钮，支持点击展开全部选项
  *
  * 变更历史：
+ * - v3.0: 新增 showDropdownButton 倒三角按钮，点击可展开下拉列表
  * - v2.0: 新增 extraOptions 支持静态选项
  * - v1.0: 支持汉字 + 拼音首字母搜索，毛玻璃风格下拉列表
  */
@@ -52,6 +53,10 @@ export interface AutocompleteInputProps {
   error?: string;
   /** v2.0: 额外的静态选项（如"其他"），始终显示在搜索结果末尾 */
   extraOptions?: AutocompleteOption[];
+  /** v3.0: 显示倒三角下拉按钮 */
+  showDropdownButton?: boolean;
+  /** v3.0: 获取全部选项的函数（用于下拉按钮点击） */
+  getAllOptionsFn?: () => Promise<AutocompleteOption[]>;
 }
 
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
@@ -69,6 +74,8 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   disabled = false,
   error,
   extraOptions = [],
+  showDropdownButton = false,
+  getAllOptionsFn,
 }) => {
   // 内部状态
   const [isOpen, setIsOpen] = useState(false);
@@ -211,6 +218,37 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     }
   }, [value, minChars, options.length]);
 
+  // v3.0: 下拉按钮点击 - 展开全部选项
+  const handleDropdownClick = useCallback(async () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let allOptions: AutocompleteOption[] = [];
+
+      // 优先使用 getAllOptionsFn，否则用空字符串调用 searchFn
+      if (getAllOptionsFn) {
+        allOptions = await getAllOptionsFn();
+      } else {
+        // 如果没有 getAllOptionsFn，尝试用空搜索获取全部
+        allOptions = await searchFn('');
+      }
+
+      // 合并 extraOptions
+      const combinedOptions = [...allOptions, ...extraOptions];
+      setOptions(combinedOptions);
+      setIsOpen(combinedOptions.length > 0);
+      setHighlightedIndex(-1);
+    } catch (error) {
+      console.error('获取选项列表失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isOpen, getAllOptionsFn, searchFn, extraOptions]);
+
   return (
     <div ref={containerRef} className={clsx('relative w-full', className)}>
       {/* 标签（仅 default 变体） */}
@@ -221,7 +259,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       )}
 
       {/* 输入框容器 */}
-      <div className="relative">
+      <div className="relative flex items-center">
         <input
           ref={inputRef}
           type="text"
@@ -233,15 +271,68 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           disabled={disabled}
           className={clsx(
             variant === 'default'
-              ? 'glass-input w-full pr-10'
+              ? 'glass-input w-full'
               : 'flex-1 bg-transparent outline-none',
+            showDropdownButton && variant === 'default' && 'pr-12',
             error && 'border-ios-red',
             inputClassName
           )}
         />
 
-        {/* 加载指示器（仅 default 变体） */}
-        {isLoading && variant === 'default' && (
+        {/* v3.0: 倒三角下拉按钮 */}
+        {showDropdownButton && variant === 'default' && (
+          <button
+            type="button"
+            onClick={handleDropdownClick}
+            disabled={disabled}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors disabled:opacity-40"
+          >
+            {isLoading ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg
+                className={clsx(
+                  'w-4 h-4 transition-transform duration-200',
+                  isOpen && 'rotate-180'
+                )}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            )}
+          </button>
+        )}
+
+        {/* v3.0: inline 变体的倒三角按钮 */}
+        {showDropdownButton && variant === 'inline' && (
+          <button
+            type="button"
+            onClick={handleDropdownClick}
+            disabled={disabled}
+            className="ml-1 w-5 h-5 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors disabled:opacity-40"
+          >
+            {isLoading ? (
+              <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg
+                className={clsx(
+                  'w-3 h-3 transition-transform duration-200',
+                  isOpen && 'rotate-180'
+                )}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            )}
+          </button>
+        )}
+
+        {/* 加载指示器（仅 default 变体且无下拉按钮时显示） */}
+        {isLoading && variant === 'default' && !showDropdownButton && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>

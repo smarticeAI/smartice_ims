@@ -1,12 +1,14 @@
 
+// v3.1 - 新增 productId 用于严格产品匹配
 export interface ProcurementItem {
   name: string;
-  specification: string; // Added specification field
+  specification: string;
   quantity: number;
-  unit: string;          // 保留用于显示，现在由 unitId 关联数据库
-  unitId?: number;       // v2.0 - 单位 ID，用于直接引用数据库单位表
-  unitPrice: number;     // Added for line-item validation
-  total: number;         // quantity * unitPrice
+  unit: string;
+  unitId?: number;
+  unitPrice: number;
+  total: number;
+  productId?: number;    // v3.1: 产品 ID，用于严格匹配数据库
 }
 
 export type CategoryType = 'Meat' | 'Vegetables' | 'Dry Goods' | 'Alcohol' | 'Consumables' | 'Other';

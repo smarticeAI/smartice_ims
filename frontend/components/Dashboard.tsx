@@ -1,6 +1,6 @@
 import React from 'react';
 import { DailyLog } from '../types';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { GlassCard } from './ui';
 
 interface DashboardProps {
@@ -23,10 +23,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
     </div>
   );
 
-  const chartData = data.map(log => ({
-    date: log.date,
-    cost: log.totalCost,
-  }));
+  // 按日期聚合采购金额
+  const dailyTotals = new Map<string, number>();
+  data.forEach(log => {
+    const existing = dailyTotals.get(log.date) || 0;
+    dailyTotals.set(log.date, existing + log.totalCost);
+  });
+  const chartData = Array.from(dailyTotals.entries())
+    .map(([date, cost]) => ({ date, cost }))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
     <div className="h-full flex flex-col gap-4 animate-slide-in pb-4 overflow-hidden">
@@ -65,13 +70,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
         {/* 微弱光晕 */}
         <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-white/5 blur-3xl"></div>
 
-        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <div className="flex items-center justify-between mb-2 flex-shrink-0">
           <h3 className="text-lg font-bold text-primary">支出趋势</h3>
-          <span className="text-lg font-bold text-primary">本月概览</span>
         </div>
         <div className="flex-1 min-h-0 w-full relative z-10">
             <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                 <defs>
                 {/* 中性白色渐变填充 */}
                 <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
@@ -86,7 +90,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
                     <stop offset="100%" stopColor="rgba(255,255,255,0.6)"/>
                 </linearGradient>
                 </defs>
-                <XAxis dataKey="date" hide />
+                <XAxis
+                  dataKey="date"
+                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                  tickLine={false}
+                  tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }}
+                  tickFormatter={(value) => {
+                    const date = new Date(value);
+                    return `${date.getMonth()+1}/${date.getDate()}`;
+                  }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }}
+                  tickFormatter={(value) => `¥${value >= 1000 ? (value/1000).toFixed(0)+'k' : value}`}
+                  width={35}
+                />
                 <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(25, 25, 30, 0.95)',
