@@ -1267,6 +1267,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
 
     try {
       // 逐张识别并合并结果
+      let successCount = 0;
       for (let i = 0; i < unrecognizedImages.length; i++) {
         const img = unrecognizedImages[i];
         console.log(`[AI识别] 识别第 ${i + 1}/${unrecognizedImages.length} 张...`);
@@ -1274,6 +1275,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
         const result = await recognizeReceipt(img.data, img.mimeType);
         if (result) {
           console.log(`[AI识别] 第 ${i + 1} 张识别成功:`, result);
+          successCount++;
           // 使用与语音录入相同的表单填充逻辑（追加模式）
           fillFormWithResult(result);
           // 标记该图片已识别
@@ -1285,10 +1287,10 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
         }
       }
 
-      // 检查是否有失败的
-      const stillUnrecognized = receiptImages.filter(img => !img.recognized).length;
-      if (stillUnrecognized > 0) {
-        alert(`${unrecognizedImages.length - stillUnrecognized} 张识别成功，${stillUnrecognized} 张失败`);
+      // 检查是否有失败的（使用本地计数避免 React 状态异步问题）
+      const failCount = unrecognizedImages.length - successCount;
+      if (failCount > 0) {
+        alert(`${successCount} 张识别成功，${failCount} 张失败`);
       }
     } catch (recognitionError) {
       console.error('[AI识别] 识别出错:', recognitionError);
