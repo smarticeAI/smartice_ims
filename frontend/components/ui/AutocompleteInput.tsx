@@ -1,14 +1,16 @@
 /**
  * 自动完成输入框组件
- * v3.0 - 添加倒三角下拉按钮，支持点击展开全部选项
+ * v3.1 - 使用 Portal 渲染下拉框，解决 GlassCard 层叠上下文覆盖问题
  *
  * 变更历史：
+ * - v3.1: 使用 createPortal 将下拉框渲染到 body，避免被 GlassCard 遮挡
  * - v3.0: 新增 showDropdownButton 倒三角按钮，点击可展开下拉列表
  * - v2.0: 新增 extraOptions 支持静态选项
  * - v1.0: 支持汉字 + 拼音首字母搜索，毛玻璃风格下拉列表
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 
 /**
@@ -82,11 +84,44 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const [options, setOptions] = useState<AutocompleteOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  // v3.1: 下拉框位置（用于 Portal 定位）
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
+  // v3.1: 下拉框 ref（用于 Portal 点击外部检测）
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // v3.1: 更新下拉框位置
+  const updateDropdownPosition = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8, // 8px gap
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  // v3.1: 当下拉框打开时，更新位置并监听滚动/调整大小
+  useEffect(() => {
+    if (isOpen) {
+      updateDropdownPosition();
+
+      // 监听滚动和窗口调整
+      const handleScrollOrResize = () => updateDropdownPosition();
+      window.addEventListener('scroll', handleScrollOrResize, true);
+      window.addEventListener('resize', handleScrollOrResize);
+
+      return () => {
+        window.removeEventListener('scroll', handleScrollOrResize, true);
+        window.removeEventListener('resize', handleScrollOrResize);
+      };
+    }
+  }, [isOpen, updateDropdownPosition]);
 
   // 防抖搜索
   const handleInputChange = useCallback(
@@ -188,12 +223,14 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   );
 
   // 点击外部关闭
+  // v3.1: 增加 dropdownRef 检测，避免点击 Portal 渲染的下拉框时关闭
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+      const isInsideContainer = containerRef.current?.contains(target);
+      const isInsideDropdown = dropdownRef.current?.contains(target);
+
+      if (!isInsideContainer && !isInsideDropdown) {
         setIsOpen(false);
       }
     };
@@ -339,53 +376,59 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         )}
       </div>
 
-      {/* 下拉列表 */}
-      {isOpen && (
-        <div
-          className={clsx(
-            'absolute z-50 w-full mt-2',
-            'max-h-60 overflow-y-auto',
-            'py-2',
-            'rounded-[28px]',
-            'border border-white/12'
-          )}
-          style={{
-            background:
-              'linear-gradient(145deg, rgba(25,25,30,0.85) 0%, rgba(25,25,30,0.75) 100%)',
-            backdropFilter: 'blur(48px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(48px) saturate(180%)',
-            boxShadow:
-              '0 8px 40px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3)',
-          }}
-        >
-          {options.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-white/50 text-center">
-              无匹配结果
-            </div>
-          ) : (
-            options.map((option, index) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => selectOption(option)}
-                onMouseEnter={() => setHighlightedIndex(index)}
-                className={clsx(
-                  'w-full px-4 py-3 text-left transition-colors',
-                  'flex flex-col gap-0.5',
-                  index === highlightedIndex
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/70 hover:bg-white/5 hover:text-white'
-                )}
-              >
-                <span className="text-sm font-medium">{option.label}</span>
-                {option.sublabel && (
-                  <span className="text-xs text-white/50">{option.sublabel}</span>
-                )}
-              </button>
-            ))
-          )}
-        </div>
-      )}
+      {/* v3.1: 下拉列表 - 使用 Portal 渲染到 body，避免层叠上下文问题 */}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className={clsx(
+              'fixed z-[9999]',
+              'max-h-60 overflow-y-auto',
+              'py-2',
+              'rounded-[28px]',
+              'border border-white/12'
+            )}
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+              background:
+                'linear-gradient(145deg, rgba(25,25,30,0.95) 0%, rgba(25,25,30,0.9) 100%)',
+              backdropFilter: 'blur(48px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(48px) saturate(180%)',
+              boxShadow:
+                '0 8px 40px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3)',
+            }}
+          >
+            {options.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-white/50 text-center">
+                无匹配结果
+              </div>
+            ) : (
+              options.map((option, index) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => selectOption(option)}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  className={clsx(
+                    'w-full px-4 py-3 text-left transition-colors',
+                    'flex flex-col gap-0.5',
+                    index === highlightedIndex
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  )}
+                >
+                  <span className="text-sm font-medium">{option.label}</span>
+                  {option.sublabel && (
+                    <span className="text-xs text-white/50">{option.sublabel}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>,
+          document.body
+        )}
 
       {/* 错误信息 */}
       {error && <p className="text-ios-red text-xs mt-1 ml-1">{error}</p>}

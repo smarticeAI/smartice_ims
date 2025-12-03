@@ -21,7 +21,8 @@ import { submitProcurement, formatSubmitResult, SubmitProgress } from '../servic
 import { useAuth } from '../contexts/AuthContext';
 import { Icons } from '../constants';
 import { GlassCard, Button, Input, AutocompleteInput } from './ui';
-import { searchSuppliers, searchProducts } from '../services/supabaseService';
+import { searchSuppliers, searchProducts, getAllProductsAsOptions, getAllSuppliersAsOptions } from '../services/supabaseService';
+import type { AutocompleteOption } from '../services/supabaseService';
 
 interface EntryFormProps {
   onSave: (log: Omit<DailyLog, 'id'>) => void;
@@ -314,7 +315,7 @@ const WorksheetScreen: React.FC<{
 
         {/* Info Section - Card Layer */}
         <GlassCard padding="md" className="space-y-4">
-          {/* v3.0: 供应商选择 + "其他"选项 */}
+          {/* v3.0: 供应商选择 + "其他"选项，v3.1: 添加下拉按钮 */}
           <AutocompleteInput
             label="供应商全称"
             value={supplier}
@@ -324,6 +325,8 @@ const WorksheetScreen: React.FC<{
             debounceMs={300}
             minChars={1}
             extraOptions={[{ id: 'other', label: '其他', value: '其他', sublabel: '手动输入供应商' }]}
+            showDropdownButton={true}
+            getAllOptionsFn={getAllSuppliersAsOptions}
           />
           {/* v3.0: "其他"供应商输入框 - 仅当选择"其他"时显示 */}
           {supplier === '其他' && (
@@ -520,6 +523,9 @@ const WorksheetScreen: React.FC<{
                       inputClassName="text-[13px] font-bold text-primary placeholder-muted"
                       debounceMs={250}
                       minChars={1}
+                      showDropdownButton={true}
+                      getAllOptionsFn={getAllProductsAsOptions}
+                      onSelect={(option) => onItemChange(index, 'productId', option.id)}
                     />
                     <button
                       onClick={() => onRemoveItem(index)}
@@ -749,7 +755,7 @@ const TranscriptionBox: React.FC<{
               ? '正在聆听...'
               : voiceStatus === 'processing'
                 ? '正在处理...'
-                : '尝试用AI帮忙录入，请用正常说话的方式说出你想录入的内容'
+                : '尝试用AI帮忙补充或修改，您可以说：请帮我把牛肋条的单位改成kg，或请帮我添加一个猪五花，20斤，一斤23块'
           }
           disabled={voiceStatus === 'recording' || voiceStatus === 'processing'}
           rows={1}
@@ -1188,6 +1194,13 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
   const handleItemChange = (index: number, field: keyof ProcurementItem, value: any) => {
     const newItems = [...items];
     const updatedItem = { ...newItems[index], [field]: value };
+
+    // v3.1: 手动输入名称时清除之前选择的 productId（因为名称变了）
+    // 但如果是通过 onSelect 设置的 productId，则不清除
+    if (field === 'name') {
+      // 用户手动输入，清除 productId，提交时会尝试匹配
+      updatedItem.productId = undefined;
+    }
 
     // v2.1 - 双向计算：支持用户输入总价或单价
     if (field === 'quantity' || field === 'unitPrice') {
