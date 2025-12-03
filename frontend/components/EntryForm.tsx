@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v2.5 - 合并"拍照"和"相册"按钮为单一"添加"按钮
 // v2.4 - 单位输入改为自由文本（移除自动完成），修复总价为空时的页面崩溃
 // v2.3 - 单位输入改为自动完成（与商品名称相同设计，输入后才显示下拉）
 // v2.1 - 支持总价/单价双向输入，自动换算
@@ -241,7 +242,6 @@ const WorksheetScreen: React.FC<{
   onBack, onSupplierChange, onNotesChange, onItemChange, onAddItem, onRemoveItem, onImageUpload, onRemoveImage, onVoiceStart, onVoiceStop, onTranscriptionChange, onSendTranscription, onReview
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevItemsLengthRef = useRef<number>(items.length);
   const isInitialMountRef = useRef<boolean>(true);
@@ -338,11 +338,11 @@ const WorksheetScreen: React.FC<{
                  </div>
                ))}
 
-               {/* 拍照按钮 */}
+               {/* 添加图片按钮（支持拍照和相册） */}
                <button
                  onClick={() => {
-                   console.log('[图片上传] 点击拍照按钮');
-                   cameraInputRef.current?.click();
+                   console.log('[图片上传] 点击添加图片按钮');
+                   fileInputRef.current?.click();
                  }}
                  disabled={isAnalyzing}
                  className="w-20 h-20 rounded-xl border-2 border-dashed border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-40"
@@ -352,22 +352,9 @@ const WorksheetScreen: React.FC<{
                  ) : (
                    <>
                      <Icons.Camera className="w-6 h-6 text-white/50" />
-                     <span className="text-[10px] text-white/40">拍照</span>
+                     <span className="text-[10px] text-white/40">添加</span>
                    </>
                  )}
-               </button>
-
-               {/* 从相册选择按钮（支持多选） */}
-               <button
-                 onClick={() => {
-                   console.log('[图片上传] 点击相册按钮');
-                   fileInputRef.current?.click();
-                 }}
-                 disabled={isAnalyzing}
-                 className="w-20 h-20 rounded-xl border-2 border-dashed border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-40"
-               >
-                 <Icons.Folder className="w-6 h-6 text-white/50" />
-                 <span className="text-[10px] text-white/40">相册</span>
                </button>
              </div>
           </div>
@@ -513,15 +500,7 @@ const WorksheetScreen: React.FC<{
 
            {/* Main Row: Voice Button + Text Box (no submit button here) */}
            <div className="flex items-start gap-2">
-             {/* Hidden Inputs - 暂时保留但不显示按钮 */}
-             <input
-                type="file"
-                ref={cameraInputRef}
-                onChange={onImageUpload}
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-              />
+             {/* Hidden file input for image upload */}
               <input
                 type="file"
                 ref={fileInputRef}
