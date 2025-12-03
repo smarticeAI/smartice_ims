@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v2.3 - 单位输入改为自动完成（与商品名称相同设计，输入后才显示下拉）
 // v2.1 - 支持总价/单价双向输入，自动换算
 // v2.0 - 单位输入改为下拉列表，移除单位映射表，直接使用 unitId
 // v1.9 - 添加收货订单图片上传区，集成到信息卡片中
@@ -19,7 +20,7 @@ import { submitProcurement, formatSubmitResult } from '../services/inventoryServ
 import { useAuth } from '../contexts/AuthContext';
 import { Icons } from '../constants';
 import { GlassCard, Button, Input, AutocompleteInput } from './ui';
-import { searchSuppliers, searchProducts, getAllUnits } from '../services/supabaseService';
+import { searchSuppliers, searchProducts, searchUnits } from '../services/supabaseService';
 
 interface EntryFormProps {
   onSave: (log: Omit<DailyLog, 'id'>) => void;
@@ -244,16 +245,6 @@ const WorksheetScreen: React.FC<{
   const prevItemsLengthRef = useRef<number>(items.length);
   const isInitialMountRef = useRef<boolean>(true);
 
-  // v2.0 - 单位下拉选项
-  const [unitOptions, setUnitOptions] = useState<Array<{id: number, code: string, name: string}>>([]);
-
-  // v2.0 - 加载单位列表
-  useEffect(() => {
-    getAllUnits()
-      .then(setUnitOptions)
-      .catch(err => console.error('[单位列表] 加载失败:', err));
-  }, []);
-
   // Scroll to top on initial mount, scroll to bottom only when new items are added
   useEffect(() => {
     if (scrollRef.current) {
@@ -418,26 +409,24 @@ const WorksheetScreen: React.FC<{
                             className="w-full bg-cacao-husk/60 border border-[rgba(138,75,47,0.3)] rounded-glass-sm py-2 text-center text-sm text-secondary outline-none focus:border-ember-rock/50 placeholder:text-white/40"
                         />
                     </div>
-                    {/* Unit - v2.0: 改为下拉列表 */}
+                    {/* Unit - v2.3: 改为自动完成输入（与商品名称相同设计） */}
                     <div className="col-span-2">
                         <label className="block text-[9px] text-muted mb-1 text-center">单位</label>
-                        <select
-                            value={item.unitId || ''}
-                            onChange={(e) => {
-                              const selectedId = parseInt(e.target.value);
-                              const selectedUnit = unitOptions.find(u => u.id === selectedId);
-                              onItemChange(index, 'unitId', selectedId);
-                              if (selectedUnit) {
-                                onItemChange(index, 'unit', selectedUnit.name);
-                              }
+                        <AutocompleteInput
+                            value={item.unit || ''}
+                            onChange={(val) => onItemChange(index, 'unit', val)}
+                            placeholder="单位"
+                            searchFn={searchUnits}
+                            onSelect={(option) => {
+                              onItemChange(index, 'unitId', option.id);
+                              onItemChange(index, 'unit', option.value);
                             }}
-                            className="w-full bg-cacao-husk/60 border border-[rgba(138,75,47,0.3)] rounded-glass-sm py-2 text-center text-sm text-secondary outline-none focus:border-ember-rock/50"
-                        >
-                            <option value="">选择</option>
-                            {unitOptions.map(unit => (
-                              <option key={unit.id} value={unit.id}>{unit.name}</option>
-                            ))}
-                        </select>
+                            variant="inline"
+                            className="flex bg-cacao-husk/60 border border-[rgba(138,75,47,0.3)] rounded-glass-sm"
+                            inputClassName="w-full text-sm text-secondary py-2 text-center placeholder:text-white/40"
+                            debounceMs={150}
+                            minChars={1}
+                        />
                     </div>
                     {/* Qty */}
                     <div className="col-span-2">

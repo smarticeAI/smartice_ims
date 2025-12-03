@@ -1,8 +1,10 @@
 /**
  * Supabase 数据库服务
- * v2.1 - 添加 total_amount 采购总价字段
+ * v2.3 - 新增 searchUnits 单位自动完成搜索
  *
  * 变更历史：
+ * - v2.3: 新增 searchUnits 函数用于单位自动完成输入
+ * - v2.2: 更新表名映射（ims_product→ims_material, ims_unit_of_measure→ims_ref_unit等）
  * - v2.1: 添加 total_amount 字段支持采购总价
  * - v2.0: 使用 supabaseClient.ts 提供的单例客户端
  * - v1.0: 独立创建 Supabase 客户端
@@ -18,44 +20,42 @@ export function getSupabaseClient() {
 
 // ============ 类型定义 ============
 
+// v2.2 - 更新为实际数据库表结构（ims_ref_*, ims_material*）
 export interface Supplier {
-  supplier_id: number;
-  supplier_code: string;
-  supplier_name: string;
-  short_name?: string;
-  supplier_type?: string;
+  id: number;
+  name: string;
+  contact_person?: string;
+  phone?: string;
   is_active: boolean;
 }
 
 export interface Product {
-  product_id: number;
-  product_code: string;
-  product_name: string;
-  product_type: 'finished' | 'semi_finished' | 'raw_material';
+  id: number;
+  code: string;
+  name: string;
   category_id?: number;
   base_unit_id?: number;
-  purchase_unit_id?: number;
   is_active: boolean;
 }
 
 export interface ProductSku {
-  sku_id: number;
-  product_id: number;
+  id: number;
+  material_id: number;
   sku_code: string;
-  sku_name: string;
   package_spec?: string;
-  package_quantity?: number;
+  base_qty_per_package?: number;
   package_unit_id?: number;
   is_default: boolean;
   is_active: boolean;
 }
 
 export interface UnitOfMeasure {
-  unit_id: number;
-  unit_code: string;
-  unit_name: string;
-  unit_type: 'weight' | 'volume' | 'count' | 'length';
-  unit_category: 'base' | 'package' | 'usage';
+  id: number;
+  code: string;
+  name_cn: string;
+  name_en?: string;
+  unit_type?: string;
+  dimension?: string;
 }
 
 export interface StorePurchasePrice {
@@ -76,16 +76,17 @@ export interface StorePurchasePrice {
 }
 
 // ============ 供应商 API ============
+// v2.2 - 使用 ims_ref_supplier 表
 
 /**
  * 获取供应商列表
  */
 export async function getSuppliers(): Promise<Supplier[]> {
   const { data, error } = await supabase
-    .from('ims_supplier')
-    .select('supplier_id, supplier_code, supplier_name, short_name, supplier_type, is_active')
+    .from('ims_ref_supplier')
+    .select('id, name, contact_person, phone, is_active')
     .eq('is_active', true)
-    .order('supplier_name');
+    .order('name');
 
   if (error) {
     console.error('获取供应商列表失败:', error);
@@ -101,9 +102,9 @@ export async function getSuppliers(): Promise<Supplier[]> {
 export async function matchSupplier(name: string): Promise<Supplier | null> {
   // 先精确匹配
   const { data: exactMatch } = await supabase
-    .from('ims_supplier')
+    .from('ims_ref_supplier')
     .select('*')
-    .eq('supplier_name', name)
+    .eq('name', name)
     .eq('is_active', true)
     .single();
 
@@ -113,9 +114,9 @@ export async function matchSupplier(name: string): Promise<Supplier | null> {
 
   // 模糊匹配
   const { data: fuzzyMatch } = await supabase
-    .from('ims_supplier')
+    .from('ims_ref_supplier')
     .select('*')
-    .ilike('supplier_name', `%${name}%`)
+    .ilike('name', `%${name}%`)
     .eq('is_active', true)
     .limit(1);
 
@@ -123,21 +124,22 @@ export async function matchSupplier(name: string): Promise<Supplier | null> {
 }
 
 // ============ 产品 API ============
+// v2.2 - 使用 ims_material 和 ims_material_sku 表
 
 /**
  * 获取产品列表（按分类）
  */
-export async function getProducts(productType?: string): Promise<Product[]> {
+export async function getProducts(categoryId?: number): Promise<Product[]> {
   let query = supabase
-    .from('ims_product')
-    .select('product_id, product_code, product_name, product_type, category_id, base_unit_id, purchase_unit_id, is_active')
+    .from('ims_material')
+    .select('id, code, name, category_id, base_unit_id, is_active')
     .eq('is_active', true);
 
-  if (productType) {
-    query = query.eq('product_type', productType);
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
   }
 
-  const { data, error } = await query.order('product_name');
+  const { data, error } = await query.order('name');
 
   if (error) {
     console.error('获取产品列表失败:', error);
@@ -151,12 +153,11 @@ export async function getProducts(productType?: string): Promise<Product[]> {
  * 模糊匹配产品
  */
 export async function matchProduct(name: string): Promise<Product[]> {
-
   // 使用 ILIKE 进行模糊匹配
   const { data, error } = await supabase
-    .from('ims_product')
+    .from('ims_material')
     .select('*')
-    .or(`product_name.ilike.%${name}%,product_code.ilike.%${name}%`)
+    .or(`name.ilike.%${name}%,code.ilike.%${name}%`)
     .eq('is_active', true)
     .limit(10);
 
@@ -171,11 +172,11 @@ export async function matchProduct(name: string): Promise<Product[]> {
 /**
  * 获取产品的 SKU 列表
  */
-export async function getProductSkus(productId: number): Promise<ProductSku[]> {
+export async function getProductSkus(materialId: number): Promise<ProductSku[]> {
   const { data, error } = await supabase
-    .from('ims_product_sku')
+    .from('ims_material_sku')
     .select('*')
-    .eq('product_id', productId)
+    .eq('material_id', materialId)
     .eq('is_active', true)
     .order('is_default', { ascending: false });
 
@@ -188,14 +189,16 @@ export async function getProductSkus(productId: number): Promise<ProductSku[]> {
 }
 
 // ============ 单位 API ============
+// v2.2 - 使用 ims_ref_unit 表
 
 /**
  * 获取计量单位列表
  */
 export async function getUnits(): Promise<UnitOfMeasure[]> {
   const { data, error } = await supabase
-    .from('ims_unit_of_measure')
+    .from('ims_ref_unit')
     .select('*')
+    .eq('is_active', true)
     .order('unit_type');
 
   if (error) {
@@ -208,13 +211,14 @@ export async function getUnits(): Promise<UnitOfMeasure[]> {
 
 /**
  * 获取所有单位列表（用于下拉选择）
- * v2.0 - 添加用于单位下拉选择的简化接口
+ * v2.2 - 使用 ims_ref_unit 表
  */
 export async function getAllUnits(): Promise<Array<{id: number, code: string, name: string}>> {
   const { data, error } = await supabase
-    .from('ims_unit_of_measure')
-    .select('unit_id, unit_code, unit_name')
-    .order('unit_name');
+    .from('ims_ref_unit')
+    .select('id, code, name_cn')
+    .eq('is_active', true)
+    .order('name_cn');
 
   if (error) {
     console.error('获取单位列表失败:', error);
@@ -222,22 +226,23 @@ export async function getAllUnits(): Promise<Array<{id: number, code: string, na
   }
 
   return data?.map(u => ({
-    id: u.unit_id,
-    code: u.unit_code,
-    name: u.unit_name
+    id: u.id,
+    code: u.code,
+    name: u.name_cn
   })) || [];
 }
 
 /**
- * 匹配单位（已弃用，保留用于向后兼容）
- * v2.0 - 简化为直接查询，不再使用映射表
+ * 匹配单位
+ * v2.2 - 使用 ims_ref_unit 表
  */
 export async function matchUnit(unitName: string): Promise<UnitOfMeasure | null> {
   // 直接精确匹配或模糊匹配
   const { data } = await supabase
-    .from('ims_unit_of_measure')
+    .from('ims_ref_unit')
     .select('*')
-    .or(`unit_code.eq.${unitName},unit_name.eq.${unitName}`)
+    .or(`code.eq.${unitName},name_cn.eq.${unitName}`)
+    .eq('is_active', true)
     .single();
 
   return data;
@@ -312,10 +317,11 @@ export async function createPurchasePrices(records: StorePurchasePrice[]): Promi
 
 /**
  * 测试 Supabase 连接
+ * v2.2 - 使用 ims_ref_supplier 表
  */
 export async function testConnection(): Promise<boolean> {
   try {
-      const { error } = await supabase.from('ims_supplier').select('supplier_id').limit(1);
+    const { error } = await supabase.from('ims_ref_supplier').select('id').limit(1);
     return !error;
   } catch {
     return false;
@@ -337,9 +343,11 @@ export interface AutocompleteOption {
 // 数据缓存
 let suppliersCache: Supplier[] | null = null;
 let productsCache: Product[] | null = null;
+let unitsCache: Array<{id: number, code: string, name: string}> | null = null;
 
 /**
  * 搜索供应商（支持汉字 + 拼音首字母）
+ * v2.2 - 更新为使用 id/name 字段
  * @param query 搜索关键词
  * @returns 匹配的供应商选项列表（最多10条）
  */
@@ -355,20 +363,21 @@ export async function searchSuppliers(query: string): Promise<AutocompleteOption
   const matched = searchInList(
     suppliersCache,
     query,
-    (s) => s.supplier_name + (s.short_name || ''),
+    (s) => s.name,
     10
   );
 
   return matched.map(s => ({
-    id: s.supplier_id,
-    label: s.supplier_name,
-    value: s.supplier_name,
-    sublabel: s.short_name || undefined,
+    id: s.id,
+    label: s.name,
+    value: s.name,
+    sublabel: s.contact_person || undefined,
   }));
 }
 
 /**
  * 搜索产品（支持汉字 + 拼音首字母）
+ * v2.2 - 更新为使用 id/name 字段
  * @param query 搜索关键词
  * @returns 匹配的产品选项列表（最多10条）
  */
@@ -384,21 +393,45 @@ export async function searchProducts(query: string): Promise<AutocompleteOption[
   const matched = searchInList(
     productsCache,
     query,
-    (p) => p.product_name,
+    (p) => p.name,
     10
   );
 
-  const typeLabels: Record<string, string> = {
-    'raw_material': '原材料',
-    'semi_finished': '半成品',
-    'finished': '成品',
-  };
-
   return matched.map(p => ({
-    id: p.product_id,
-    label: p.product_name,
-    value: p.product_name,
-    sublabel: typeLabels[p.product_type] || p.product_type,
+    id: p.id,
+    label: p.name,
+    value: p.name,
+    sublabel: p.code || undefined,
+  }));
+}
+
+/**
+ * 搜索单位（支持汉字 + 拼音首字母）
+ * v2.3 - 新增：用于单位自动完成输入
+ * @param query 搜索关键词
+ * @returns 匹配的单位选项列表（最多10条）
+ */
+export async function searchUnits(query: string): Promise<AutocompleteOption[]> {
+  if (!query || query.length < 1) return [];
+
+  // 首次调用时加载全部数据
+  if (!unitsCache) {
+    unitsCache = await getAllUnits();
+  }
+
+  // 本地搜索（汉字 + 拼音匹配）
+  const matched = searchInList(
+    unitsCache,
+    query,
+    (u) => u.name,
+    10
+  );
+
+  return matched.map(u => ({
+    id: u.id,
+    label: u.name,
+    value: u.name,
+    sublabel: u.code || undefined,
   }));
 }
 
@@ -408,4 +441,5 @@ export async function searchProducts(query: string): Promise<AutocompleteOption[
 export function clearSearchCache(): void {
   suppliersCache = null;
   productsCache = null;
+  unitsCache = null;
 }
