@@ -1,3 +1,4 @@
+// v3.2.0 - EntryForm 欢迎页传递菜单回调
 // v3.1.0 - 添加登录页面路由
 import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
@@ -177,7 +178,7 @@ const AppContent: React.FC = () => {
 
         <main className={`flex-1 ${currentView === AppView.DASHBOARD ? 'overflow-hidden' : 'overflow-y-auto'} ${currentView === AppView.NEW_ENTRY ? 'p-0' : 'p-4 md:p-8'} max-w-5xl mx-auto w-full`}>
             {currentView === AppView.DASHBOARD && <Dashboard logs={logs} />}
-            {currentView === AppView.NEW_ENTRY && <EntryForm onSave={handleSaveEntry} userName={CURRENT_USER_NAME} />}
+            {currentView === AppView.NEW_ENTRY && <EntryForm onSave={handleSaveEntry} userName={CURRENT_USER_NAME} onOpenMenu={() => setSidebarOpen(true)} />}
             {currentView === AppView.HISTORY && <HistoryView />}
         </main>
       </div>

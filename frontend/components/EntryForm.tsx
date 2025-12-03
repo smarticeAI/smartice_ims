@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v2.6 - 欢迎页添加右上角菜单按钮，修复分类页返回按钮导航
 // v2.5 - 合并"拍照"和"相册"按钮为单一"添加"按钮
 // v2.4 - 单位输入改为自由文本（移除自动完成），修复总价为空时的页面崩溃
 // v2.3 - 单位输入改为自动完成（与商品名称相同设计，输入后才显示下拉）
@@ -27,6 +28,7 @@ import { searchSuppliers, searchProducts } from '../services/supabaseService';
 interface EntryFormProps {
   onSave: (log: Omit<DailyLog, 'id'>) => void;
   userName: string;
+  onOpenMenu?: () => void;
 }
 
 type EntryStep = 'WELCOME' | 'CATEGORY' | 'WORKSHEET' | 'SUMMARY';
@@ -86,7 +88,7 @@ const MOCK_PRESETS: Record<string, { supplier: string; notes: string; items: Pro
 
 // --- Welcome Screen (Minimalist Typography) ---
 
-const WelcomeScreen: React.FC<{ userName: string; onStart: () => void }> = ({ userName, onStart }) => {
+const WelcomeScreen: React.FC<{ userName: string; onStart: () => void; onOpenMenu?: () => void }> = ({ userName, onStart, onOpenMenu }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -114,6 +116,18 @@ const WelcomeScreen: React.FC<{ userName: string; onStart: () => void }> = ({ us
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-harbor-blue opacity-12 blur-3xl"></div>
       <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full bg-faded-steel opacity-10 blur-3xl"></div>
       <div className="absolute top-1/2 right-1/3 w-64 h-64 rounded-full bg-aged-paper opacity-15 blur-2xl"></div>
+
+      {/* 顶部导航栏 - 菜单按钮 */}
+      {onOpenMenu && (
+        <div className="absolute top-6 right-4 z-20">
+          <button
+            onClick={onOpenMenu}
+            className="p-2 text-white/70 hover:text-white transition-colors"
+          >
+            <Icons.Menu className="w-6 h-6" />
+          </button>
+        </div>
+      )}
 
       {/* 苹果锁屏样式：日期 + 时间 */}
       <div className="w-full pt-16 relative z-10">
@@ -812,7 +826,7 @@ const SummaryScreen: React.FC<{
 
 // --- Main Container ---
 
-export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
+export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMenu }) => {
   const [step, setStep] = useState<EntryStep>('WELCOME');
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('Meat');
   const [supplier, setSupplier] = useState('');
@@ -892,7 +906,10 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // 获取认证信息
-  const { storeId, employeeId } = useAuth();
+  // v1.9: 从 user 对象中正确提取 storeId 和 employeeId
+  const { user } = useAuth();
+  const storeId = user?.store_id || null;
+  const employeeId = user?.id || null;
 
   // 初始化语音服务回调
   // v1.8: 识别完成后仅显示文本，不自动填充，需点击发送按钮
@@ -1192,12 +1209,13 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
         <WelcomeScreen
           userName={userName}
           onStart={() => setStep('CATEGORY')}
+          onOpenMenu={onOpenMenu}
         />
       )}
       {step === 'CATEGORY' && (
         <CategoryScreen
           onSelect={handleCategorySelect}
-          onBack={() => setStep('CATEGORY')}
+          onBack={() => setStep('WELCOME')}
         />
       )}
       {step === 'WORKSHEET' && (
