@@ -118,10 +118,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Slide-over Overlay - Storm Glass */}
       <div
-        className={`fixed inset-0 z-50 transition-all duration-300 md:hidden
-        ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-50 md:hidden
+        ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
       >
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={toggleSidebar}></div>
+        <div
+          className={`absolute inset-0 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            transition: 'opacity 200ms ease-out',
+          }}
+          onClick={toggleSidebar}
+        ></div>
         <div
           className={`absolute top-0 bottom-0 left-0 w-64 transform transition-transform duration-300 flex flex-col p-4 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
           style={{

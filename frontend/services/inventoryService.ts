@@ -1,8 +1,9 @@
 /**
  * 入库数据提交服务
- * v3.3 - 支持多张收货单图片上传
+ * v3.4 - 产品匹配改为严格模式（必须有 productId）
  *
  * 变更历史：
+ * - v3.4: 产品匹配严格模式，必须从下拉列表选择产品（有 productId）
  * - v3.3: receiptImages 改为数组，支持多张收货单上传
  * - v3.2: 添加 onProgress 回调函数，支持进度 UI 显示
  * - v3.1: 图片上传失败时立即返回错误，不继续插入数据
@@ -181,19 +182,25 @@ export async function submitProcurement(
       continue;
     }
 
-    // 尝试匹配产品（可选）
+    // v3.4: 产品匹配严格模式 - 必须有 productId
     let materialId: number | undefined;
-    const products = await matchProduct(item.name);
-    if (products.length > 0) {
-      materialId = products[0].id;
-      console.log(`[提交] 产品匹配: ${item.name} -> ${products[0].name} (ID: ${materialId})`);
+
+    // 优先使用前端传递的 productId（从下拉选择）
+    if (item.productId) {
+      materialId = item.productId;
+      console.log(`[提交] 产品ID已选择: ${item.name} (ID: ${materialId})`);
     } else {
-      console.log(`[提交] 产品未匹配: ${item.name}（将保存原始名称）`);
-      result.pendingMatches.push({
-        itemName: item.name,
-        matchType: 'product',
-        rawValue: item.name,
-      });
+      // 尝试通过名称匹配
+      const products = await matchProduct(item.name);
+      if (products.length > 0) {
+        materialId = products[0].id;
+        console.log(`[提交] 产品匹配: ${item.name} -> ${products[0].name} (ID: ${materialId})`);
+      } else {
+        // v3.4: 严格模式 - 未匹配产品直接报错，阻止提交
+        console.error(`[提交] 产品未匹配（严格模式）: ${item.name}`);
+        result.errors.push(`产品 "${item.name}" 未在系统中找到，请从下拉列表选择`);
+        continue; // 跳过此物品，继续检查其他物品
+      }
     }
 
     // 构建记录
