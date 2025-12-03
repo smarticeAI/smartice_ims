@@ -1,4 +1,5 @@
 # 语音录入 API 路由
+# v2.7 - /extract 支持传入当前表单数据，实现修改/删除/添加功能
 # v2.6 - 语音识别与结构化提取分离：WebSocket 仅返回识别文本，用户确认后再调用 /extract
 # v2.5: 添加 Redis 队列状态端点
 # v2.4: 添加文件上传验证 (大小限制、格式检查)
@@ -278,8 +279,9 @@ async def transcribe_audio(
 
 
 class TextInput(BaseModel):
-    """文本输入模型"""
+    """文本输入模型 - v2.7 支持传入当前表单数据"""
     text: str
+    current_data: Optional[dict] = None  # v2.7: 当前表单数据（用于修改模式）
 
 
 @router.post("/extract")
@@ -287,18 +289,26 @@ async def extract_from_text(input_data: TextInput):
     """
     REST API: 直接从文本提取结构化数据 (跳过 ASR)
 
-    用于测试 Gemini 提取功能
+    v2.7 新增：支持传入 current_data 实现修改/删除/添加功能
+    - 如果 current_data 为空或无 items，使用新建模式
+    - 如果 current_data 有 items，使用修改模式（AI 理解用户指令并更新）
 
     Args:
-        input_data: 包含 text 字段的 JSON 请求体
+        input_data: 包含 text 和可选 current_data 字段的 JSON 请求体
 
     Returns:
-        VoiceEntryResult: 结构化的采购清单
+        VoiceEntryResult: 结构化的采购清单（修改模式下返回完整更新后的数据）
     """
-    print(f"[VoiceAPI] >>> /extract 被调用! 文本: {input_data.text[:50]}...")
+    has_current = bool(input_data.current_data and input_data.current_data.get("items"))
+    mode = "修改" if has_current else "新建"
+    print(f"[VoiceAPI] >>> /extract 被调用! 模式: {mode}, 文本: {input_data.text[:50]}...")
+
     try:
-        print("[VoiceAPI] >>> 正在调用 Qwen 解析...")
-        result = await qwen_extractor.extract(input_data.text)
+        print(f"[VoiceAPI] >>> 正在调用 Qwen 解析 ({mode}模式)...")
+        result = await qwen_extractor.extract(
+            input_data.text,
+            current_data=input_data.current_data
+        )
         print(f"[VoiceAPI] >>> Qwen 解析完成: {result}")
         return JSONResponse(content={
             "success": True,

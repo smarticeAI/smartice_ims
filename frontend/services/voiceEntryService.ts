@@ -1,4 +1,5 @@
 // 语音录入服务
+// v2.6 - extractFromText 支持传入当前表单数据，实现修改/删除/添加功能
 // v2.5 - 语音识别与结构化提取分离：识别后返回文本供用户编辑，点击发送后才调用 Qwen
 // v2.4: 修复竞态条件 - 在 getUserMedia 等待期间 WebSocket 状态可能变化
 // v2.3: 处理 stop_recording 信号，当讯飞 VAD 检测到静音时立即停止发送音频
@@ -556,14 +557,28 @@ class VoiceEntryService {
   }
 
   /**
-   * 直接从文本提取结构化数据 (测试用)
+   * 直接从文本提取结构化数据
+   * v2.6: 支持传入当前表单数据，实现修改/删除/添加功能
+   *
+   * @param text - 用户语音/文本输入
+   * @param currentData - 可选，当前表单数据（有数据时使用修改模式，AI会理解用户指令并更新）
+   * @returns 完整的结构化数据（修改模式下返回更新后的完整数据）
    */
-  async extractFromText(text: string): Promise<VoiceEntryResult | null> {
+  async extractFromText(
+    text: string,
+    currentData?: VoiceEntryResult
+  ): Promise<VoiceEntryResult | null> {
     try {
+      const hasCurrentData = currentData && currentData.items && currentData.items.length > 0;
+      console.log(`[VoiceEntry] 文本提取 (${hasCurrentData ? '修改' : '新建'}模式):`, text);
+
       const response = await fetch(`${BACKEND_URL}/api/voice/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({
+          text,
+          current_data: hasCurrentData ? currentData : null
+        })
       });
 
       if (!response.ok) {

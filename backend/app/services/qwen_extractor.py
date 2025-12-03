@@ -1,4 +1,5 @@
 # Qwen 结构化提取服务
+# v1.6 - 支持传入当前表单数据，实现修改/删除/添加功能
 # v1.5 - 使用阿里云通义千问 API 将语音识别文本转换为采购清单 JSON
 # v1.1: 优化 specification 字段格式，使用斜杠分隔包装规格（用于最小单位计算）
 # v1.2: 精简 prompt，移除方言处理（由讯飞 ASR 处理）
@@ -50,6 +51,48 @@ class QwenExtractorService:
 
 语音输入: {text}
 直接输出JSON："""
+
+    # v1.6: 修改模式提示词 - 支持在现有数据基础上修改/删除/添加
+    MODIFICATION_PROMPT = """你是采购清单编辑助手。用户已有一份采购清单，现在要通过语音指令进行修改。
+
+【当前清单】
+{current_json}
+
+【用户指令】
+{text}
+
+【任务】
+根据用户指令修改清单，返回完整的更新后JSON。
+
+【指令类型识别】
+1. 修改：用户说"XX写错了是YY"、"把XX改成YY"、"XX的数量改成N"等 → 修改对应字段
+2. 删除：用户说"删除XX"、"XX不要了"、"去掉XX" → 从items中移除该项
+3. 添加：用户说"加一个XX"、"再来个XX"、"帮我加XX" → 在items末尾添加新项
+4. 混合：用户可能同时有多个操作，全部执行
+
+【输出格式】
+{{"supplier":"供应商","notes":"备注","items":[{{"name":"商品名","specification":"规格","quantity":数量,"unit":"单位","unitPrice":单价,"total":小计}}]}}
+
+【规则】
+- total = quantity × unitPrice（自动计算）
+- 保留未被修改的项目不变
+- 如果用户只说"加XX"没说价格数量，合理推测或留空让用户补充
+- 删除时用商品名模糊匹配（如"运费"匹配"快运费"）
+- 修改名称时保留其他字段不变
+
+【示例】
+当前: {{"supplier":"","notes":"","items":[{{"name":"豆腐园子","specification":"规格","quantity":20,"unit":"斤","unitPrice":9,"total":180}},{{"name":"快运费","specification":"规格","quantity":1,"unit":"元","unitPrice":44,"total":44}}]}}
+
+指令: "豆腐园子写错了是圆子"
+输出: {{"supplier":"","notes":"","items":[{{"name":"圆子","specification":"规格","quantity":20,"unit":"斤","unitPrice":9,"total":180}},{{"name":"快运费","specification":"规格","quantity":1,"unit":"元","unitPrice":44,"total":44}}]}}
+
+指令: "运费要删除"
+输出: {{"supplier":"","notes":"","items":[{{"name":"豆腐园子","specification":"规格","quantity":20,"unit":"斤","unitPrice":9,"total":180}}]}}
+
+指令: "加一个西冷牛排3斤22元一斤"
+输出: {{"supplier":"","notes":"","items":[{{"name":"豆腐园子","specification":"规格","quantity":20,"unit":"斤","unitPrice":9,"total":180}},{{"name":"快运费","specification":"规格","quantity":1,"unit":"元","unitPrice":44,"total":44}},{{"name":"西冷牛排","specification":"","quantity":3,"unit":"斤","unitPrice":22,"total":66}}]}}
+
+直接输出更新后的完整JSON："""
 
     # API 端点配置
     BASE_URL_INTL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
@@ -117,12 +160,18 @@ class QwenExtractorService:
 
         raise json.JSONDecodeError("无法从响应中提取 JSON", text, 0)
 
-    async def extract(self, text: str, max_retries: int = 3) -> VoiceEntryResult:
+    async def extract(
+        self,
+        text: str,
+        current_data: Optional[dict] = None,
+        max_retries: int = 3
+    ) -> VoiceEntryResult:
         """
         从语音识别文本提取结构化数据（带重试机制）
 
         Args:
             text: ASR 识别的原始文本
+            current_data: v1.6 可选，当前表单数据（用于修改/删除/添加模式）
             max_retries: 速率限制错误最大重试次数
 
         Returns:
@@ -139,7 +188,17 @@ class QwenExtractorService:
         if not text.strip():
             raise ValueError("输入文本为空")
 
-        prompt = self.EXTRACTION_PROMPT.format(text=text)
+        # v1.6: 如果提供了当前数据，使用修改模式
+        if current_data and current_data.get("items"):
+            current_json = json.dumps(current_data, ensure_ascii=False)
+            prompt = self.MODIFICATION_PROMPT.format(
+                current_json=current_json,
+                text=text
+            )
+            print(f"[QwenExtractor] 使用修改模式，当前 {len(current_data.get('items', []))} 项")
+        else:
+            prompt = self.EXTRACTION_PROMPT.format(text=text)
+            print("[QwenExtractor] 使用新建模式")
         response = None
 
         # 带重试的 API 调用

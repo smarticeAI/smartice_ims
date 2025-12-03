@@ -976,7 +976,37 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
   const [showTranscription, setShowTranscription] = useState(false);
   const [isSendingTranscription, setIsSendingTranscription] = useState(false);
 
-  // v1.8: 填充表单数据的公共函数
+  // v3.3: 获取当前表单数据（用于传递给 AI 进行修改）
+  const getCurrentFormData = (): VoiceEntryResult => {
+    // 只包含有效的物品（名称非空）
+    const validItems = items.filter(item => item.name.trim() !== '');
+    return {
+      supplier: supplier,
+      notes: notes,
+      items: validItems
+    };
+  };
+
+  // v3.3: 完全替换表单数据（用于 AI 修改模式返回的结果）
+  const replaceFormWithResult = (result: VoiceEntryResult) => {
+    console.log('[语音录入] 完全替换表单数据:', result);
+
+    // 1. 供应商：直接替换
+    setSupplier(result.supplier || '');
+
+    // 2. 备注：直接替换
+    setNotes(result.notes || '');
+
+    // 3. 物品：完全替换
+    if (result.items && result.items.length > 0) {
+      setItems(result.items);
+    } else {
+      // 如果 AI 返回空列表，保留一个空行
+      setItems([{ name: '', specification: '', quantity: 0, unit: '', unitPrice: 0, total: 0 }]);
+    }
+  };
+
+  // v1.8: 填充表单数据的公共函数（新建模式，仅添加）
   const fillFormWithResult = (result: VoiceEntryResult) => {
     // 1. 供应商：REPLACE（替换）
     if (result.supplier) {
@@ -1008,17 +1038,32 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
     }
   };
 
-  // v1.8: 手动发送文本进行解析
+  // v3.3: 手动发送文本进行解析（支持修改模式）
   const handleSendTranscription = async () => {
     if (!transcriptionText.trim() || isSendingTranscription) return;
 
     setIsSendingTranscription(true);
     try {
+      // v3.3: 获取当前表单数据，传递给 AI
+      const currentData = getCurrentFormData();
+      const hasExistingItems = currentData.items.length > 0;
+
       console.log('[语音录入] 手动发送解析:', transcriptionText);
-      const result = await voiceEntryService.extractFromText(transcriptionText);
+      console.log('[语音录入] 当前数据:', hasExistingItems ? `${currentData.items.length} 项` : '无');
+
+      // 调用 API，传入当前数据（如果有）
+      const result = await voiceEntryService.extractFromText(
+        transcriptionText,
+        hasExistingItems ? currentData : undefined
+      );
 
       if (result) {
-        fillFormWithResult(result);
+        // v3.3: 如果有现有数据，使用替换模式；否则使用添加模式
+        if (hasExistingItems) {
+          replaceFormWithResult(result);
+        } else {
+          fillFormWithResult(result);
+        }
         // 清除文本框
         setTranscriptionText('');
         setShowTranscription(false);
