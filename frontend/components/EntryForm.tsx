@@ -281,7 +281,7 @@ const WorksheetScreen: React.FC<{
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)'
               }}>
-            ¥{grandTotal.toFixed(2)}
+            ¥{(Number(grandTotal) || 0).toFixed(2)}
          </div>
       </div>
 
@@ -753,7 +753,7 @@ const SummaryScreen: React.FC<{
                         {item.quantity}{item.unit} × ¥{item.unitPrice}
                       </p>
                    </div>
-                   <p className="font-mono font-bold text-harbor-blue text-lg">¥{(item.total || 0).toFixed(0)}</p>
+                   <p className="font-mono font-bold text-harbor-blue text-lg">¥{(Number(item.total) || 0).toFixed(0)}</p>
                 </div>
               ))}
            </div>
@@ -763,7 +763,7 @@ const SummaryScreen: React.FC<{
               <div className="flex justify-between items-center">
                  <span className="text-secondary font-medium">总计金额</span>
                  <span className="text-3xl font-bold tracking-tight text-harbor-blue">
-                   ¥{grandTotal.toFixed(2)}
+                   ¥{(Number(grandTotal) || 0).toFixed(2)}
                  </span>
               </div>
            </div>
