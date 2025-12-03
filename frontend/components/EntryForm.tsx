@@ -815,7 +815,8 @@ const SummaryScreen: React.FC<{
   countdown: number;
   onBack: () => void;
   onConfirm: () => void;
-}> = ({ items, supplier, notes, grandTotal, isSubmitting, submitMessage, submitError, submitProgress, countdown, onBack, onConfirm }) => {
+  onImmediateReturn: () => void;
+}> = ({ items, supplier, notes, grandTotal, isSubmitting, submitMessage, submitError, submitProgress, countdown, onBack, onConfirm, onImmediateReturn }) => {
   // v3.2: 成功界面 - 全屏覆盖
   if (submitProgress === 'success' && countdown > 0) {
     return (
@@ -848,7 +849,7 @@ const SummaryScreen: React.FC<{
 
         {/* 立即返回按钮 */}
         <button
-          onClick={onBack}
+          onClick={onImmediateReturn}
           className="px-8 py-3 rounded-full bg-white/10 border border-white/20 text-white text-base font-medium transition-all hover:bg-white/20 active:scale-95"
         >
           立即返回
@@ -1127,6 +1128,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
   // v3.2: 进度状态和成功倒计时
   const [submitProgress, setSubmitProgress] = useState<SubmitProgress | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 获取认证信息
   // v1.9: 从 user 对象中正确提取 storeId 和 employeeId
@@ -1449,6 +1451,13 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
         return;
     }
 
+    // v3.6: 进入 SUMMARY 页面前清除之前的提交状态（错误信息等）
+    setSubmitError(null);
+    setSubmitMessage('');
+    setSubmitProgress(null);
+    setCountdown(0);
+    setIsSubmitting(false);
+
     setStep('SUMMARY');
   };
 
@@ -1515,16 +1524,16 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
         const message = formatSubmitResult(result);
         setSubmitMessage(message);
 
-        // 保存到本地（仅在提交成功后）
-        onSave(logData);
-
         // v3.2: 开始 3 秒倒计时
         setCountdown(3);
-        const countdownInterval = setInterval(() => {
+        countdownIntervalRef.current = setInterval(() => {
           setCountdown(prev => {
             if (prev <= 1) {
-              clearInterval(countdownInterval);
-              // 倒计时结束，重置状态并返回分类选择页
+              if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+              }
+              // 倒计时结束，重置状态
               setSubmitMessage('');
               setIsSubmitting(false);
               setSubmitProgress(null);
@@ -1536,7 +1545,8 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
               setNotes('');
               setReceiptImages([]);
               setGoodsImage(null);
-              setStep('CATEGORY'); // 返回分类选择页，方便继续录入
+              // 倒计时结束后调用 onSave，触发页面跳转
+              onSave(logData);
               return 0;
             }
             return prev - 1;
@@ -1558,6 +1568,38 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
       setSubmitError('未登录，请先登录后再提交数据');
       setIsSubmitting(false);
     }
+  };
+
+  // 立即返回 - 跳过倒计时直接返回
+  const handleImmediateReturn = () => {
+    // 清除倒计时
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    // 重置状态
+    setSubmitMessage('');
+    setIsSubmitting(false);
+    setSubmitProgress(null);
+    setCountdown(0);
+    // 重置表单状态
+    setItems([{ name: '', specification: '', quantity: 1, unit: '', unitPrice: 0, total: 0 }]);
+    setSupplier('');
+    setSupplierOther('');
+    setNotes('');
+    setReceiptImages([]);
+    setGoodsImage(null);
+    // 构建 logData 并调用 onSave 跳转
+    const logData: Omit<DailyLog, 'id'> = {
+      date: new Date().toISOString(),
+      category: selectedCategory,
+      supplier: supplier || '未知供应商',
+      items: [],
+      totalCost: 0,
+      notes: '',
+      status: 'Stocked',
+    };
+    onSave(logData);
   };
 
   return (
@@ -1624,6 +1666,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, onOpenMe
           countdown={countdown}
           onBack={() => setStep('WORKSHEET')}
           onConfirm={handleSummaryConfirm}
+          onImmediateReturn={handleImmediateReturn}
         />
       )}
     </div>
