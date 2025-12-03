@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v2.4 - 单位输入改为自由文本（移除自动完成），修复总价为空时的页面崩溃
 // v2.3 - 单位输入改为自动完成（与商品名称相同设计，输入后才显示下拉）
 // v2.1 - 支持总价/单价双向输入，自动换算
 // v2.0 - 单位输入改为下拉列表，移除单位映射表，直接使用 unitId
@@ -20,7 +21,7 @@ import { submitProcurement, formatSubmitResult } from '../services/inventoryServ
 import { useAuth } from '../contexts/AuthContext';
 import { Icons } from '../constants';
 import { GlassCard, Button, Input, AutocompleteInput } from './ui';
-import { searchSuppliers, searchProducts, searchUnits } from '../services/supabaseService';
+import { searchSuppliers, searchProducts } from '../services/supabaseService';
 
 interface EntryFormProps {
   onSave: (log: Omit<DailyLog, 'id'>) => void;
@@ -339,7 +340,10 @@ const WorksheetScreen: React.FC<{
 
                {/* 拍照按钮 */}
                <button
-                 onClick={() => cameraInputRef.current?.click()}
+                 onClick={() => {
+                   console.log('[图片上传] 点击拍照按钮');
+                   cameraInputRef.current?.click();
+                 }}
                  disabled={isAnalyzing}
                  className="w-20 h-20 rounded-xl border-2 border-dashed border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-40"
                >
@@ -355,7 +359,10 @@ const WorksheetScreen: React.FC<{
 
                {/* 从相册选择按钮（支持多选） */}
                <button
-                 onClick={() => fileInputRef.current?.click()}
+                 onClick={() => {
+                   console.log('[图片上传] 点击相册按钮');
+                   fileInputRef.current?.click();
+                 }}
                  disabled={isAnalyzing}
                  className="w-20 h-20 rounded-xl border-2 border-dashed border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-40"
                >
@@ -409,23 +416,15 @@ const WorksheetScreen: React.FC<{
                             className="w-full bg-cacao-husk/60 border border-[rgba(138,75,47,0.3)] rounded-glass-sm py-2 text-center text-sm text-secondary outline-none focus:border-ember-rock/50 placeholder:text-white/40"
                         />
                     </div>
-                    {/* Unit - v2.3: 改为自动完成输入（与商品名称相同设计） */}
+                    {/* Unit - v2.4: 改为自由文本输入（不使用自动完成） */}
                     <div className="col-span-2">
                         <label className="block text-[9px] text-muted mb-1 text-center">单位</label>
-                        <AutocompleteInput
+                        <input
+                            type="text"
                             value={item.unit || ''}
-                            onChange={(val) => onItemChange(index, 'unit', val)}
+                            onChange={(e) => onItemChange(index, 'unit', e.target.value)}
                             placeholder="单位"
-                            searchFn={searchUnits}
-                            onSelect={(option) => {
-                              onItemChange(index, 'unitId', option.id);
-                              onItemChange(index, 'unit', option.value);
-                            }}
-                            variant="inline"
-                            className="flex bg-cacao-husk/60 border border-[rgba(138,75,47,0.3)] rounded-glass-sm"
-                            inputClassName="w-full text-sm text-secondary py-2 text-center placeholder:text-white/40"
-                            debounceMs={150}
-                            minChars={1}
+                            className="w-full bg-cacao-husk/60 border border-[rgba(138,75,47,0.3)] rounded-glass-sm py-2 text-center text-sm text-secondary outline-none focus:border-ember-rock/50 placeholder:text-white/40"
                         />
                     </div>
                     {/* Qty */}
@@ -775,7 +774,7 @@ const SummaryScreen: React.FC<{
                         {item.quantity}{item.unit} × ¥{item.unitPrice}
                       </p>
                    </div>
-                   <p className="font-mono font-bold text-harbor-blue text-lg">¥{item.total.toFixed(0)}</p>
+                   <p className="font-mono font-bold text-harbor-blue text-lg">¥{(item.total || 0).toFixed(0)}</p>
                 </div>
               ))}
            </div>
@@ -1009,14 +1008,18 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[图片上传] 触发上传事件');
     const files = e.target.files;
+    console.log('[图片上传] 选择的文件:', files?.length || 0, '个');
     if (!files || files.length === 0) return;
 
-    // Reset input to allow re-selection of same file
+    // 先复制文件列表，再重置input（避免某些浏览器清空files）
+    const fileList = Array.from(files);
     e.target.value = '';
 
     // 处理每个文件
-    for (const file of Array.from(files)) {
+    for (const file of fileList) {
+      console.log('[图片上传] 开始处理文件:', file.name, file.type, file.size);
       // 生成唯一 ID
       const imageId = crypto.randomUUID();
 
@@ -1024,11 +1027,14 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
 
       try {
         // 1. 压缩图片（识别优先：2560px, 0.85 质量, 1.5MB）
+        console.log('[图片上传] 开始压缩...');
         const compressed = await compressImage(file);
         console.log(`[图片压缩] ${file.name}: ${formatFileSize(compressed.originalSize)} → ${formatFileSize(compressed.compressedSize)}`);
 
         // 2. 生成缩略图
+        console.log('[图片上传] 生成缩略图...');
         const thumbnail = await generateThumbnail(compressed.data);
+        console.log('[图片上传] 缩略图生成完成');
 
         // 3. 创建附件对象（未识别状态）
         const newImage: AttachedImage = {
@@ -1042,7 +1048,9 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName }) => {
         };
 
         // 4. 立即添加到预览（显示识别中状态）
+        console.log('[图片上传] 添加到预览列表...');
         setAttachedImages(prev => [...prev, newImage]);
+        console.log('[图片上传] 图片处理完成!');
 
         // AI 图片识别暂时禁用 - 待后端 API 完成后重新启用
         // 目前图片仅作为附件保存，不进行识别
