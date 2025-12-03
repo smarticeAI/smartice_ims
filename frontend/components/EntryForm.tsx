@@ -826,7 +826,7 @@ const SummaryScreen: React.FC<{
         <p className="text-secondary text-center mb-8">{submitMessage}</p>
 
         {/* 倒计时 */}
-        <div className="text-center">
+        <div className="text-center mb-8">
           <p className="text-muted text-sm mb-2">{countdown} 秒后自动返回</p>
           <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
             <div
@@ -835,6 +835,14 @@ const SummaryScreen: React.FC<{
             />
           </div>
         </div>
+
+        {/* 立即返回按钮 */}
+        <button
+          onClick={onBack}
+          className="px-8 py-3 rounded-full bg-white/10 border border-white/20 text-white text-base font-medium transition-all hover:bg-white/20 active:scale-95"
+        >
+          立即返回
+        </button>
       </div>
     );
   }
