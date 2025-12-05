@@ -130,6 +130,41 @@ export async function matchSupplier(name: string): Promise<Supplier | null> {
   return fuzzyMatch?.[0] || null;
 }
 
+/**
+ * 创建新供应商（或返回已存在的）
+ * v3.4 - 用于"其他"供应商自动入库
+ */
+export async function createOrGetSupplier(name: string): Promise<Supplier> {
+  const trimmedName = name.trim();
+
+  // 先检查是否已存在
+  const { data: existing } = await supabase
+    .from('ims_ref_supplier')
+    .select('*')
+    .eq('name', trimmedName)
+    .single();
+
+  if (existing) {
+    console.log(`[供应商] 已存在: ${trimmedName} (ID: ${existing.id})`);
+    return existing;
+  }
+
+  // 不存在则创建新的
+  const { data: newSupplier, error } = await supabase
+    .from('ims_ref_supplier')
+    .insert({ name: trimmedName, is_active: true })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('创建供应商失败:', error);
+    throw error;
+  }
+
+  console.log(`[供应商] 新增: ${trimmedName} (ID: ${newSupplier.id})`);
+  return newSupplier;
+}
+
 // ============ 产品 API ============
 // v2.2 - 使用 ims_material 和 ims_material_sku 表
 

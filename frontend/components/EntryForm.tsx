@@ -486,7 +486,7 @@ const WorksheetScreen: React.FC<{
             showDropdownButton={true}
             getAllOptionsFn={getAllSuppliersAsOptions}
           />
-          {/* "其他"供应商输入框 - 仅当选择"其他"时显示 */}
+          {/* "其他"供应商输入框 - 仅当选择"其他"时显示，新供应商自动入库 */}
           {supplier === '其他' && (
             <div className="animate-slide-in">
               <label className="block text-[16px] tracking-wider text-zinc-500 font-bold mb-2 ml-1">
@@ -496,7 +496,7 @@ const WorksheetScreen: React.FC<{
                 type="text"
                 value={supplierOther}
                 onChange={(e) => onSupplierOtherChange(e.target.value)}
-                placeholder="供应商全称..."
+                placeholder="供货商将会被添加到数据库，下次直接选择即可"
                 className="glass-input w-full py-3"
               />
             </div>

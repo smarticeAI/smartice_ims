@@ -1,8 +1,9 @@
 /**
  * 入库数据提交服务
- * v3.4 - 产品匹配改为严格模式（必须有 productId）
+ * v3.5 - "其他"供应商自动入库到 ims_ref_supplier
  *
  * 变更历史：
+ * - v3.5: 选择"其他"并输入新供应商名称时，自动创建到数据库
  * - v3.4: 产品匹配严格模式，必须从下拉列表选择产品（有 productId）
  * - v3.3: receiptImages 改为数组，支持多张收货单上传
  * - v3.2: 添加 onProgress 回调函数，支持进度 UI 显示
@@ -16,6 +17,7 @@ import { DailyLog, ProcurementItem } from '../types';
 import {
   matchProduct,
   matchSupplier,
+  createOrGetSupplier,
   createPurchasePrices,
   StorePurchasePrice,
   Product,
@@ -161,9 +163,17 @@ export async function submitProcurement(
       supplierName = dailyLog.supplier;
     }
   } else if (dailyLog.supplierOther) {
-    // "其他"供应商
-    supplierName = dailyLog.supplierOther;
-    console.log(`[提交] 其他供应商: ${supplierName}`);
+    // v3.5: "其他"供应商 - 自动创建到数据库
+    try {
+      const newSupplier = await createOrGetSupplier(dailyLog.supplierOther);
+      supplierId = newSupplier.id;
+      supplierName = newSupplier.name;
+      console.log(`[提交] 其他供应商已入库: ${supplierName} (ID: ${supplierId})`);
+    } catch (error) {
+      console.error(`[提交] 创建供应商失败:`, error);
+      // 降级：只保存名称，不关联 ID
+      supplierName = dailyLog.supplierOther;
+    }
   }
 
   // 构建记录
