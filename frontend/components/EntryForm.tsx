@@ -422,7 +422,7 @@ const WorksheetScreen: React.FC<{
                     <>
                       <Icons.Sparkles className="w-4 h-4 text-ios-blue" />
                       <span className="text-sm text-ios-blue font-medium">
-                        AI识别 {receiptImages.length > 1 ? `(${receiptImages.filter(img => !img.recognized).length}张)` : ''}
+                        AI智能识别+填入物品清单 {receiptImages.length > 1 ? `(${receiptImages.filter(img => !img.recognized).length}张)` : ''}
                       </span>
                     </>
                   )}
@@ -1386,7 +1386,8 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
       }
     } catch (recognitionError) {
       console.error('[AI识别] 识别出错:', recognitionError);
-      alert('收货单识别出错，请手动输入');
+      const errorMessage = recognitionError instanceof Error ? recognitionError.message : '未知错误';
+      alert(`收货单识别出错: ${errorMessage}`);
     }
 
     setIsRecognizing(false);

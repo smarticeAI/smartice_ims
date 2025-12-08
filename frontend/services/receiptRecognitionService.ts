@@ -152,7 +152,8 @@ export async function recognizeReceipt(
 
   } catch (error) {
     console.error('[收货单识别] 识别失败:', error);
-    return null;
+    // 重新抛出错误以便调用方处理
+    throw error;
   }
 }
 
