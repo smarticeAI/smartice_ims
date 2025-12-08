@@ -1,13 +1,15 @@
 // 收货单图片识别服务
+// v2.0 - 统一使用 husanai OpenAI 兼容 API + gemini-2.5-flash-image 模型
 // v1.1 - 将 Gemini API Key 改为环境变量
 // v1.0 - 使用 Gemini 2.0 Flash 识别收货单/送货单图片，提取结构化采购数据
 // 返回与语音录入相同的 VoiceEntryResult 格式，复用表单填充逻辑
 
 import { ProcurementItem } from '../types';
 
-// Gemini 2.0 Flash API 配置
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+// Husanai OpenAI 兼容 API 配置
+const HUSANAI_API_KEY = import.meta.env.VITE_HUSANAI_API_KEY || '';
+const HUSANAI_API_URL = 'https://husanai.com/v1/chat/completions';
+const VISION_MODEL = 'gemini-2.5-flash-image';
 
 // 识别结果 - 与 VoiceEntryResult 结构一致，复用表单填充逻辑
 export interface ReceiptRecognitionResult {
@@ -73,45 +75,46 @@ export async function recognizeReceipt(
   imageBase64: string,
   mimeType: string
 ): Promise<ReceiptRecognitionResult | null> {
-  // v1.1: 检查 API Key 是否配置
-  if (!GEMINI_API_KEY) {
-    console.error('[收货单识别] 错误: 未配置 VITE_GEMINI_API_KEY 环境变量');
+  // v2.0: 检查 Husanai API Key 是否配置
+  if (!HUSANAI_API_KEY) {
+    console.error('[收货单识别] 错误: 未配置 VITE_HUSANAI_API_KEY 环境变量');
     throw new Error('收货单识别服务未配置，请联系管理员');
   }
 
   console.log('[收货单识别] 开始识别，图片大小:', Math.round(imageBase64.length * 0.75 / 1024), 'KB');
+  console.log('[收货单识别] 使用模型:', VISION_MODEL);
 
   try {
-    // 构建 Gemini API 请求
+    // 构建 OpenAI 兼容格式请求
     const requestBody = {
-      contents: [
+      model: VISION_MODEL,
+      messages: [
         {
-          parts: [
+          role: 'user',
+          content: [
             {
-              inline_data: {
-                mime_type: mimeType,
-                data: imageBase64
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${imageBase64}`
               }
             },
             {
+              type: 'text',
               text: RECEIPT_RECOGNITION_PROMPT
             }
           ]
         }
       ],
-      generationConfig: {
-        temperature: 0.1,  // 低温度，提高一致性
-        topP: 0.8,
-        topK: 40,
-        maxOutputTokens: 4096,
-      }
+      temperature: 0.1,
+      max_tokens: 4096
     };
 
-    // 调用 Gemini API
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    // 调用 Husanai OpenAI 兼容 API
+    const response = await fetch(HUSANAI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${HUSANAI_API_KEY}`
       },
       body: JSON.stringify(requestBody)
     });
@@ -119,14 +122,14 @@ export async function recognizeReceipt(
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[收货单识别] API 错误:', response.status, errorText);
-      throw new Error(`Gemini API 错误: ${response.status}`);
+      throw new Error(`API 错误: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     console.log('[收货单识别] API 响应:', data);
 
-    // 提取生成的文本
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // 提取生成的文本（OpenAI 格式）
+    const generatedText = data.choices?.[0]?.message?.content;
     if (!generatedText) {
       console.error('[收货单识别] 无法提取响应文本');
       return null;
@@ -235,19 +238,26 @@ function validateAndFixResult(result: any): ReceiptRecognitionResult {
 }
 
 /**
- * 检查 Gemini API 是否可用
+ * 检查图片识别 API 是否可用
  */
-export async function checkGeminiHealth(): Promise<boolean> {
+export async function checkVisionApiHealth(): Promise<boolean> {
+  if (!HUSANAI_API_KEY) {
+    console.warn('[收货单识别] API Key 未配置');
+    return false;
+  }
+
   try {
     // 发送一个简单的文本请求来检查 API
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(HUSANAI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${HUSANAI_API_KEY}`
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: 'Hello' }] }],
-        generationConfig: { maxOutputTokens: 10 }
+        model: VISION_MODEL,
+        messages: [{ role: 'user', content: 'Hello' }],
+        max_tokens: 10
       })
     });
 
@@ -256,3 +266,6 @@ export async function checkGeminiHealth(): Promise<boolean> {
     return false;
   }
 }
+
+// 兼容旧函数名
+export const checkGeminiHealth = checkVisionApiHealth;
