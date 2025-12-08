@@ -1,12 +1,13 @@
 /**
  * PreloadDataContext - 数据预加载上下文
- * v1.2 - 添加品牌过滤支持，根据用户所属门店品牌加载对应物料
+ * v1.3 - 供应商也支持品牌过滤
  *
  * 功能：
  * - 应用启动时后台静默预加载所有下拉框数据
  * - 不阻塞页面渲染，用户可立即使用
  * - 使用 ref 防止重复加载
  * - 与 supabaseService.ts 共享缓存机制
+ * - v1.3: 供应商也根据用户 brand_code 过滤
  * - v1.2: 根据用户 brand_code 加载对应品牌的物料
  *
  * 使用方式：
@@ -80,9 +81,9 @@ export const PreloadDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     try {
       // 并行加载所有数据
-      // v1.2: 产品加载时传入品牌代码进行过滤
+      // v1.3: 产品和供应商都传入品牌代码进行过滤
       const [suppliersData, productsData, unitsData] = await Promise.all([
-        getSuppliers().catch(err => {
+        getSuppliers(brandCode).catch(err => {
           console.error('[PreloadData] 加载供应商失败:', err);
           return [];
         }),

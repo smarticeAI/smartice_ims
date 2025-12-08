@@ -1,10 +1,11 @@
 /**
  * Supabase 数据库服务
+ * v3.5 - 添加供应商品牌过滤，getSuppliers() 支持 brandCode 参数
  * v3.4 - 添加 brandCode 品牌过滤，支持按品牌加载物料
  * v3.3 - 添加删除采购记录功能
- * v3.2 - 集成 PreloadDataContext 缓存机制，实现数据预加载
  *
  * 变更历史：
+ * - v3.5: getSuppliers() 支持 brandCode 参数，用于按品牌过滤供应商
  * - v3.4: getProducts() 支持 brandCode 参数，用于按品牌过滤物料
  * - v3.3: 添加删除采购记录功能
  * - v3.2: 与 PreloadDataContext 共享缓存，支持应用启动时预加载数据
@@ -88,14 +89,22 @@ export interface StorePurchasePrice {
 // v2.2 - 使用 ims_ref_supplier 表
 
 /**
- * 获取供应商列表
+ * 获取供应商列表（按品牌过滤）
+ * v3.5 - 添加 brandCode 参数，支持按品牌过滤供应商
+ * @param brandCode 可选品牌代码 (YBL=野百灵, NGX=宁桂杏, COMMON=通用)
  */
-export async function getSuppliers(): Promise<Supplier[]> {
-  const { data, error } = await supabase
+export async function getSuppliers(brandCode?: string): Promise<Supplier[]> {
+  let query = supabase
     .from('ims_ref_supplier')
     .select('id, name, contact_person, phone, is_active')
-    .eq('is_active', true)
-    .order('name');
+    .eq('is_active', true);
+
+  // v3.5: 品牌过滤 - 加载本品牌 + 通用(COMMON) 供应商
+  if (brandCode) {
+    query = query.or(`brand_code.eq.${brandCode},brand_code.eq.COMMON,brand_code.is.null`);
+  }
+
+  const { data, error } = await query.order('name');
 
   if (error) {
     console.error('获取供应商列表失败:', error);
