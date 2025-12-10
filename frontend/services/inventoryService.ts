@@ -1,8 +1,10 @@
 /**
  * 入库数据提交服务
- * v3.7 - 添加 use_ai_photo 和 use_ai_voice 字段，追踪 AI 功能使用情况
+ * v3.9 - 产品匹配支持别名（如西红柿→番茄），使用 exactMatchProduct RPC
  *
  * 变更历史：
+ * - v3.9: 产品匹配改用 exactMatchProduct，支持别名匹配
+ * - v3.8: goodsImages 改为数组，支持批量上传多张货物图片
  * - v3.7: submitProcurement 新增 useAiPhoto/useAiVoice 参数
  * - v3.6: specification 字段独立存储，notes 字段用于整单备注
  * - v3.5: 选择"其他"并输入新供应商名称时，自动创建到数据库
@@ -18,6 +20,7 @@
 import { DailyLog, ProcurementItem } from '../types';
 import {
   matchProduct,
+  exactMatchProduct,
   matchSupplier,
   createOrGetSupplier,
   createPurchasePrices,
@@ -110,8 +113,9 @@ export async function submitProcurement(
 
   // 上传图片
   // v3.3: receiptImages 改为数组，支持多张收货单
+  // v3.8: goodsImages 改为数组，支持多张货物照片
   let receiptImageUrls: string[] = [];
-  let goodsImageUrl: string | undefined;
+  let goodsImageUrls: string[] = [];
 
   // v3.1: 图片上传失败时立即返回错误，不继续插入数据
   // v3.2: 通过 onProgress 回调报告进度
@@ -138,17 +142,22 @@ export async function submitProcurement(
     }
   }
 
-  if (dailyLog.goodsImage) {
+  // v3.8: 循环上传多张货物图片
+  if (dailyLog.goodsImages && dailyLog.goodsImages.length > 0) {
     try {
       onProgress?.('uploading_goods');
-      console.log('[提交] 上传货物图片...');
-      goodsImageUrl = await uploadImageToStorage(
-        dailyLog.goodsImage.data,
-        dailyLog.goodsImage.mimeType,
-        storeId,
-        'goods'
-      );
-      console.log('[提交] 货物图片上传成功');
+      console.log(`[提交] 上传 ${dailyLog.goodsImages.length} 张货物图片...`);
+      for (let i = 0; i < dailyLog.goodsImages.length; i++) {
+        const img = dailyLog.goodsImages[i];
+        const url = await uploadImageToStorage(
+          img.data,
+          img.mimeType,
+          storeId,
+          'goods'
+        );
+        goodsImageUrls.push(url);
+        console.log(`[提交] 货物图片 ${i + 1}/${dailyLog.goodsImages.length} 上传成功`);
+      }
     } catch (err) {
       console.error('[提交] 货物图片上传失败:', err);
       result.errors.push(`货物图片上传失败: ${err instanceof Error ? err.message : '未知错误'}`);
@@ -213,11 +222,11 @@ export async function submitProcurement(
       materialId = item.productId;
       console.log(`[提交] 产品ID已选择: ${item.name} (ID: ${materialId})`);
     } else {
-      // 尝试通过名称匹配
-      const products = await matchProduct(item.name);
-      if (products.length > 0) {
-        materialId = products[0].id;
-        console.log(`[提交] 产品匹配: ${item.name} -> ${products[0].name} (ID: ${materialId})`);
+      // v3.9: 使用 exactMatchProduct 支持别名匹配（如西红柿→番茄）
+      const product = await exactMatchProduct(item.name);
+      if (product) {
+        materialId = product.id;
+        console.log(`[提交] 产品匹配: ${item.name} -> ${product.name} (ID: ${materialId})`);
       } else {
         // v3.4: 严格模式 - 未匹配产品直接报错，阻止提交
         console.error(`[提交] 产品未匹配（严格模式）: ${item.name}`);
@@ -239,8 +248,9 @@ export async function submitProcurement(
       unit_price: item.unitPrice,
       total_amount: item.total || (item.quantity * item.unitPrice),
       // v3.3: 多张收货单图片存为 JSON 数组
+      // v3.8: 多张货物图片存为 JSON 数组
       receipt_image: receiptImageUrls.length > 0 ? JSON.stringify(receiptImageUrls) : undefined,
-      goods_image: goodsImageUrl,
+      goods_image: goodsImageUrls.length > 0 ? JSON.stringify(goodsImageUrls) : undefined,
       price_date: priceDate,
       supplier_name: supplierName,
       specification: item.specification || undefined,  // v3.6: 物品规格

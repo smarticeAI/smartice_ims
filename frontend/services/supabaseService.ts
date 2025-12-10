@@ -1,11 +1,13 @@
 /**
  * Supabase 数据库服务
+ * v3.8 - 添加物料别名(aliases)支持，实现模糊匹配（如西红柿→番茄）
  * v3.7 - 添加 use_ai_photo 和 use_ai_voice 字段，追踪 AI 功能使用情况
  * v3.6 - 添加分类API，getCategories() 从数据库读取分类
  * v3.5 - 添加供应商品牌过滤，getSuppliers() 支持 brandCode 参数
  * v3.4 - 添加 brandCode 品牌过滤，支持按品牌加载物料
  *
  * 变更历史：
+ * - v3.8: Product 接口新增 aliases 字段，exactMatchProduct/searchProducts 支持别名匹配
  * - v3.7: createPurchasePrices 支持 use_ai_photo/use_ai_voice 字段写入
  * - v3.6: 新增 getCategories() 从数据库读取物料分类，支持品牌过滤
  * - v3.5: getSuppliers() 支持 brandCode 参数，用于按品牌过滤供应商
@@ -46,6 +48,7 @@ export interface Product {
   category_id?: number;
   base_unit_id?: number;
   is_active: boolean;
+  aliases?: string[];  // v3.8: 别名列表，用于模糊匹配（如 ["西红柿"] 对应番茄）
 }
 
 export interface ProductSku {
@@ -233,7 +236,7 @@ export async function createOrGetSupplier(name: string): Promise<Supplier> {
 export async function getProducts(categoryId?: number, brandCode?: string): Promise<Product[]> {
   let query = supabase
     .from('ims_material')
-    .select('id, code, name, category_id, base_unit_id, is_active')
+    .select('id, code, name, category_id, base_unit_id, is_active, aliases')
     .eq('is_active', true);
 
   if (categoryId) {
@@ -277,16 +280,15 @@ export async function matchProduct(name: string): Promise<Product[]> {
 
 /**
  * 精确匹配产品（用于提交验证）
+ * v3.8 - 支持别名匹配：使用 RPC 函数同时匹配 name 和 aliases
  * v3.3 - 新增：验证产品名称是否精确存在于数据库
  */
 export async function exactMatchProduct(name: string): Promise<Product | null> {
-  // 精确匹配名称（忽略大小写）
+  const trimmedName = name.trim();
+
+  // 使用数据库 RPC 函数进行匹配（同时匹配 name 和 aliases）
   const { data, error } = await supabase
-    .from('ims_material')
-    .select('*')
-    .ilike('name', name.trim())
-    .eq('is_active', true)
-    .limit(1);
+    .rpc('match_material_by_alias', { search_name: trimmedName });
 
   if (error) {
     console.error('精确匹配产品失败:', error);
@@ -552,7 +554,8 @@ export async function searchSuppliers(query: string): Promise<AutocompleteOption
 }
 
 /**
- * 搜索产品（支持汉字 + 拼音首字母）
+ * 搜索产品（支持汉字 + 拼音首字母 + 别名匹配）
+ * v3.8 - 支持别名搜索：搜索关键词会同时匹配 name 和 aliases 数组
  * v2.2 - 更新为使用 id/name 字段
  * @param query 搜索关键词
  * @returns 匹配的产品选项列表（最多10条）
@@ -565,11 +568,18 @@ export async function searchProducts(query: string): Promise<AutocompleteOption[
     productsCache = await getProducts();
   }
 
-  // 本地搜索（汉字 + 拼音匹配）
+  // v3.8: 扩展搜索函数，同时匹配 name 和 aliases
+  const getSearchableText = (p: Product): string => {
+    // 将 name 和所有别名合并为一个可搜索字符串
+    const aliasText = p.aliases ? p.aliases.join(' ') : '';
+    return `${p.name} ${aliasText}`;
+  };
+
+  // 本地搜索（汉字 + 拼音匹配 + 别名匹配）
   const matched = searchInList(
     productsCache,
     query,
-    (p) => p.name,
+    getSearchableText,
     10
   );
 
