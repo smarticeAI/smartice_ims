@@ -229,11 +229,18 @@ export async function createOrGetSupplier(name: string): Promise<Supplier> {
 
 /**
  * 获取产品列表（按分类/品牌过滤）
- * v3.4 - 添加 brandCode 参数，支持按品牌过滤物料
+ * v3.5 - 修复: 使用 brand_id 而非 brand_code 过滤物料
  * @param categoryId 可选分类ID
  * @param brandCode 可选品牌代码 (YBL=野百灵, NGX=宁桂杏, COMMON=通用)
  */
 export async function getProducts(categoryId?: number, brandCode?: string): Promise<Product[]> {
+  // 品牌代码到品牌ID的映射
+  const brandCodeToId: Record<string, number> = {
+    'YBL': 1,    // 野百灵
+    'NGX': 2,    // 宁桂杏
+    'COMMON': 3, // 通用
+  };
+
   let query = supabase
     .from('ims_material')
     .select('id, code, name, category_id, base_unit_id, is_active, aliases')
@@ -243,9 +250,10 @@ export async function getProducts(categoryId?: number, brandCode?: string): Prom
     query = query.eq('category_id', categoryId);
   }
 
-  // v3.4: 品牌过滤 - 加载本品牌 + 通用(COMMON) 物料
-  if (brandCode) {
-    query = query.or(`brand_code.eq.${brandCode},brand_code.eq.COMMON,brand_code.is.null`);
+  // v3.5: 品牌过滤 - 使用 brand_id，加载本品牌 + 通用(id=3) 物料
+  if (brandCode && brandCodeToId[brandCode]) {
+    const brandId = brandCodeToId[brandCode];
+    query = query.or(`brand_id.eq.${brandId},brand_id.eq.3`);
   }
 
   const { data, error } = await query.order('name');

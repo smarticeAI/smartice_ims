@@ -36,9 +36,10 @@ const AppContent: React.FC = () => {
 
       setLogsLoading(true);
       try {
+        console.log(`[Dashboard] 当前用户 store_id: ${user?.store_id}`);
         const data = await getPurchaseLogs(user?.store_id || undefined, 30);
         setLogs(data);
-        console.log(`[Dashboard] 加载了 ${data.length} 条采购记录`);
+        console.log(`[Dashboard] 加载了 ${data.length} 条采购记录 (门店过滤: ${user?.store_id ? '是' : '否'})`);
       } catch (err) {
         console.error('[Dashboard] 加载采购记录失败:', err);
       } finally {
