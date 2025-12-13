@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v5.1 - 新建供应商时传递 brand_code，绑定当前品牌
 // v5.0 - 员工餐分类特殊处理：固定物料/单位，禁用AI识别/语音，只允许单条
 // v4.8 - 收货单照片添加"需为同一供货商"提示 + 供应商/备注增加一键清除按钮
 // v4.7 - 货物照片支持批量添加多张（称重核对留证）
@@ -447,11 +448,13 @@ const WorksheetScreen: React.FC<{
                 </div>
               )}
               {/* v3.7: 移动端兼容性优化 - 不使用 capture 属性，让用户选择相机或相册 */}
+              {/* v5.1: 添加 multiple 属性支持相册多选 */}
               <input
                 type="file"
                 ref={receiptInputRef}
                 onChange={onReceiptImageUpload}
                 accept="image/*"
+                multiple
                 className="absolute opacity-0 w-0 h-0 pointer-events-none"
                 aria-label="上传收货单照片"
               />
@@ -499,11 +502,13 @@ const WorksheetScreen: React.FC<{
                 </button>
               </div>
               {/* v3.7: 移动端兼容性优化 - 不使用 capture 属性，让用户选择相机或相册 */}
+              {/* v5.1: 添加 multiple 属性支持相册多选 */}
               <input
                 type="file"
                 ref={goodsInputRef}
                 onChange={onGoodsImageUpload}
                 accept="image/*"
+                multiple
                 className="absolute opacity-0 w-0 h-0 pointer-events-none"
                 aria-label="上传货物照片"
               />
@@ -1392,39 +1397,44 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
   };
 
   // v3.5: 收货单图片上传处理（支持多张，追加到数组）
+  // v5.1: 支持相册多选批量上传
   const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('[图片上传] 触发收货单上传');
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0];
     e.target.value = '';
-
-    console.log('[图片上传] 收货单文件:', file.name, file.type, file.size);
+    console.log(`[图片上传] 收货单文件数量: ${files.length}`);
     setIsAnalyzing(true);
 
     try {
-      // 1. 压缩图片
-      const compressed = await compressImage(file);
-      console.log(`[图片压缩] 收货单: ${formatFileSize(compressed.originalSize)} → ${formatFileSize(compressed.compressedSize)}`);
+      // v5.1: 遍历所有选中的文件
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log(`[图片上传] 处理收货单 ${i + 1}/${files.length}: ${file.name}, ${file.type}, ${file.size}`);
 
-      // 2. 生成缩略图
-      const thumbnail = await generateThumbnail(compressed.data);
+        // 1. 压缩图片
+        const compressed = await compressImage(file);
+        console.log(`[图片压缩] 收货单 ${i + 1}: ${formatFileSize(compressed.originalSize)} → ${formatFileSize(compressed.compressedSize)}`);
 
-      // 3. 创建附件对象
-      const newImage: AttachedImage = {
-        id: crypto.randomUUID(),
-        data: compressed.data,
-        mimeType: compressed.mimeType,
-        thumbnail,
-        recognized: false,
-        originalSize: compressed.originalSize,
-        compressedSize: compressed.compressedSize
-      };
+        // 2. 生成缩略图
+        const thumbnail = await generateThumbnail(compressed.data);
 
-      // v3.5: 追加到数组而非替换
-      setReceiptImages(prev => [...prev, newImage]);
-      console.log('[图片上传] 收货单图片添加成功，等待用户点击"AI识别"');
+        // 3. 创建附件对象
+        const newImage: AttachedImage = {
+          id: crypto.randomUUID(),
+          data: compressed.data,
+          mimeType: compressed.mimeType,
+          thumbnail,
+          recognized: false,
+          originalSize: compressed.originalSize,
+          compressedSize: compressed.compressedSize
+        };
+
+        // v3.5: 追加到数组而非替换
+        setReceiptImages(prev => [...prev, newImage]);
+      }
+      console.log(`[图片上传] ${files.length} 张收货单图片添加成功，等待用户点击"AI识别"`);
 
     } catch (error) {
       console.error('收货单图片处理失败:', error);
@@ -1487,39 +1497,44 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
   };
 
   // v4.7: 货物图片上传处理（支持多张，追加模式）
+  // v5.1: 支持相册多选批量上传
   const handleGoodsImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('[图片上传] 触发货物上传');
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0];
     e.target.value = '';
-
-    console.log('[图片上传] 货物文件:', file.name, file.type, file.size);
+    console.log(`[图片上传] 货物文件数量: ${files.length}`);
     setIsAnalyzing(true);
 
     try {
-      // 1. 压缩图片
-      const compressed = await compressImage(file);
-      console.log(`[图片压缩] 货物: ${formatFileSize(compressed.originalSize)} → ${formatFileSize(compressed.compressedSize)}`);
+      // v5.1: 遍历所有选中的文件
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log(`[图片上传] 处理货物 ${i + 1}/${files.length}: ${file.name}, ${file.type}, ${file.size}`);
 
-      // 2. 生成缩略图
-      const thumbnail = await generateThumbnail(compressed.data);
+        // 1. 压缩图片
+        const compressed = await compressImage(file);
+        console.log(`[图片压缩] 货物 ${i + 1}: ${formatFileSize(compressed.originalSize)} → ${formatFileSize(compressed.compressedSize)}`);
 
-      // 3. 创建附件对象
-      const newImage: AttachedImage = {
-        id: crypto.randomUUID(),
-        data: compressed.data,
-        mimeType: compressed.mimeType,
-        thumbnail,
-        recognized: false,
-        originalSize: compressed.originalSize,
-        compressedSize: compressed.compressedSize
-      };
+        // 2. 生成缩略图
+        const thumbnail = await generateThumbnail(compressed.data);
 
-      // v4.7: 追加到数组而不是替换
-      setGoodsImages(prev => [...prev, newImage]);
-      console.log('[图片上传] 货物图片处理完成!');
+        // 3. 创建附件对象
+        const newImage: AttachedImage = {
+          id: crypto.randomUUID(),
+          data: compressed.data,
+          mimeType: compressed.mimeType,
+          thumbnail,
+          recognized: false,
+          originalSize: compressed.originalSize,
+          compressedSize: compressed.compressedSize
+        };
+
+        // v4.7: 追加到数组而不是替换
+        setGoodsImages(prev => [...prev, newImage]);
+      }
+      console.log(`[图片上传] ${files.length} 张货物图片处理完成!`);
 
     } catch (error) {
       console.error('货物图片处理失败:', error);
@@ -1699,9 +1714,10 @@ ${productList}
     console.log(`[提交] AI 使用统计: 识图=${useAiPhotoCount}次, 语音=${useAiVoiceCount}次`);
 
     // 添加到队列
+    // v5.1: 传递 brand_code 用于新建供应商时绑定品牌
     if (storeId && employeeId) {
-      const queueId = addToUploadQueue(logData, storeId, employeeId, aiUsage);
-      console.log(`[队列] 任务已加入队列: ${queueId}`);
+      const queueId = addToUploadQueue(logData, storeId, employeeId, aiUsage, user?.brand_code);
+      console.log(`[队列] 任务已加入队列: ${queueId}, brand_code: ${user?.brand_code}`);
 
       // 显示成功提示
       setSubmitProgress('success');

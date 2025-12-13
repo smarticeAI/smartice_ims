@@ -1,8 +1,10 @@
 /**
  * 入库数据提交服务
+ * v4.0 - 新建供应商时绑定品牌ID，支持 brandCode 参数转换为 brand_id
  * v3.9 - 产品匹配支持别名（如西红柿→番茄），使用 exactMatchProduct RPC
  *
  * 变更历史：
+ * - v4.0: 新建供应商绑定品牌，添加 brandCode 参数和品牌映射
  * - v3.9: 产品匹配改用 exactMatchProduct，支持别名匹配
  * - v3.8: goodsImages 改为数组，支持批量上传多张货物图片
  * - v3.7: submitProcurement 新增 useAiPhoto/useAiVoice 参数
@@ -54,6 +56,25 @@ export type SubmitProgress =
 
 export type OnProgressCallback = (progress: SubmitProgress) => void;
 
+// ============ 品牌代码映射 ============
+// v4.0 - 品牌代码到品牌ID的映射（与数据库 ims_brand 表对应）
+
+const BRAND_CODE_TO_ID: Record<string, number> = {
+  'YBL': 1,    // 野百灵
+  'NGX': 2,    // 宁桂杏
+  'COMMON': 3, // 通用
+};
+
+/**
+ * 将品牌代码转换为品牌ID
+ * @param brandCode 品牌代码 (YBL/NGX/COMMON)
+ * @returns 品牌ID，默认返回 3（通用）
+ */
+function brandCodeToId(brandCode?: string | null): number {
+  if (!brandCode) return 3;  // 默认通用
+  return BRAND_CODE_TO_ID[brandCode] || 3;
+}
+
 // ============ 主提交函数 ============
 
 /**
@@ -67,6 +88,7 @@ export interface AiUsageStats {
 
 /**
  * 提交采购数据到数据库
+ * v4.0 - 添加 brandCode 参数，新建供应商时绑定品牌
  * v3.7 - 添加 AI 使用统计参数
  *
  * @param dailyLog - 前端录入的日志数据
@@ -74,6 +96,7 @@ export interface AiUsageStats {
  * @param employeeId - 员工 UUID
  * @param onProgress - 进度回调函数（可选）
  * @param aiUsage - AI 使用统计（可选）
+ * @param brandCode - 品牌代码（可选），用于新建供应商时绑定品牌
  * @returns 提交结果
  */
 export async function submitProcurement(
@@ -81,7 +104,8 @@ export async function submitProcurement(
   storeId: string,
   employeeId: string,
   onProgress?: OnProgressCallback,
-  aiUsage?: AiUsageStats
+  aiUsage?: AiUsageStats,
+  brandCode?: string | null
 ): Promise<SubmitResult> {
   const result: SubmitResult = {
     success: false,
@@ -185,12 +209,13 @@ export async function submitProcurement(
       supplierName = dailyLog.supplier;
     }
   } else if (dailyLog.supplierOther) {
-    // v3.5: "其他"供应商 - 自动创建到数据库
+    // v4.0: "其他"供应商 - 自动创建到数据库，绑定当前品牌
     try {
-      const newSupplier = await createOrGetSupplier(dailyLog.supplierOther);
+      const brandId = brandCodeToId(brandCode);
+      const newSupplier = await createOrGetSupplier(dailyLog.supplierOther, brandId);
       supplierId = newSupplier.id;
       supplierName = newSupplier.name;
-      console.log(`[提交] 其他供应商已入库: ${supplierName} (ID: ${supplierId})`);
+      console.log(`[提交] 其他供应商已入库: ${supplierName} (ID: ${supplierId}, brand_id: ${brandId})`);
     } catch (error) {
       console.error(`[提交] 创建供应商失败:`, error);
       // 降级：只保存名称，不关联 ID

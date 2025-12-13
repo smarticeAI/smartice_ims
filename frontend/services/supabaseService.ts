@@ -1,16 +1,18 @@
 /**
  * Supabase 数据库服务
+ * v4.0 - 供应商表重命名 ims_ref_supplier → ims_supplier，品牌字段改为 brand_id 外键
  * v3.8 - 添加物料别名(aliases)支持，实现模糊匹配（如西红柿→番茄）
  * v3.7 - 添加 use_ai_photo 和 use_ai_voice 字段，追踪 AI 功能使用情况
  * v3.6 - 添加分类API，getCategories() 从数据库读取分类
- * v3.5 - 添加供应商品牌过滤，getSuppliers() 支持 brandCode 参数
+ * v3.5 - 添加供应商品牌过滤，getSuppliers() 支持 brandId 参数
  * v3.4 - 添加 brandCode 品牌过滤，支持按品牌加载物料
  *
  * 变更历史：
+ * - v4.0: 供应商表重命名，brand_code → brand_id 外键，createOrGetSupplier 支持 brandId
  * - v3.8: Product 接口新增 aliases 字段，exactMatchProduct/searchProducts 支持别名匹配
  * - v3.7: createPurchasePrices 支持 use_ai_photo/use_ai_voice 字段写入
  * - v3.6: 新增 getCategories() 从数据库读取物料分类，支持品牌过滤
- * - v3.5: getSuppliers() 支持 brandCode 参数，用于按品牌过滤供应商
+ * - v3.5: getSuppliers() 支持 brandId 参数，用于按品牌过滤供应商
  * - v3.4: getProducts() 支持 brandCode 参数，用于按品牌过滤物料
  * - v3.3: 添加删除采购记录功能
  * - v3.2: 与 PreloadDataContext 共享缓存，支持应用启动时预加载数据
@@ -32,13 +34,14 @@ export function getSupabaseClient() {
 
 // ============ 类型定义 ============
 
-// v2.2 - 更新为实际数据库表结构（ims_ref_*, ims_material*）
+// v4.0 - 更新为实际数据库表结构（ims_supplier, ims_material*）
 export interface Supplier {
   id: number;
   name: string;
   contact_person?: string;
   phone?: string;
   is_active: boolean;
+  brand_id: number;  // v4.0: 品牌ID外键，关联 ims_brand
 }
 
 export interface Product {
@@ -86,7 +89,7 @@ export interface StorePurchasePrice {
   store_id: string;           // UUID - 门店
   created_by: string;         // UUID - 录入人
   material_id?: number;       // 关联 ims_material（可为空）
-  supplier_id?: number;       // 关联 ims_ref_supplier（可为空）
+  supplier_id?: number;       // 关联 ims_supplier（可为空）
   item_name: string;          // 原始录入名称
   quantity: number;           // 数量
   unit: string;               // 单位（自由文本）
@@ -134,22 +137,22 @@ export async function getCategories(brandCode?: string): Promise<Category[]> {
 }
 
 // ============ 供应商 API ============
-// v2.2 - 使用 ims_ref_supplier 表
+// v4.0 - 使用 ims_supplier 表，brand_id 外键
 
 /**
  * 获取供应商列表（按品牌过滤）
- * v3.5 - 添加 brandCode 参数，支持按品牌过滤供应商
- * @param brandCode 可选品牌代码 (YBL=野百灵, NGX=宁桂杏, COMMON=通用)
+ * v4.0 - 使用 brand_id 外键过滤，加载本品牌 + 通用(id=3) 供应商
+ * @param brandId 可选品牌ID (1=野百灵, 2=宁桂杏, 3=通用)
  */
-export async function getSuppliers(brandCode?: string): Promise<Supplier[]> {
+export async function getSuppliers(brandId?: number): Promise<Supplier[]> {
   let query = supabase
-    .from('ims_ref_supplier')
-    .select('id, name, contact_person, phone, is_active')
+    .from('ims_supplier')
+    .select('id, name, contact_person, phone, is_active, brand_id')
     .eq('is_active', true);
 
-  // v3.5: 品牌过滤 - 加载本品牌 + 通用(COMMON) 供应商
-  if (brandCode) {
-    query = query.or(`brand_code.eq.${brandCode},brand_code.eq.COMMON,brand_code.is.null`);
+  // v4.0: 品牌过滤 - 加载本品牌 + 通用(id=3) 供应商
+  if (brandId) {
+    query = query.or(`brand_id.eq.${brandId},brand_id.eq.3`);
   }
 
   const { data, error } = await query.order('name');
@@ -164,11 +167,12 @@ export async function getSuppliers(brandCode?: string): Promise<Supplier[]> {
 
 /**
  * 模糊匹配供应商
+ * v4.0 - 使用 ims_supplier 表
  */
 export async function matchSupplier(name: string): Promise<Supplier | null> {
   // 先精确匹配
   const { data: exactMatch } = await supabase
-    .from('ims_ref_supplier')
+    .from('ims_supplier')
     .select('*')
     .eq('name', name)
     .eq('is_active', true)
@@ -180,7 +184,7 @@ export async function matchSupplier(name: string): Promise<Supplier | null> {
 
   // 模糊匹配
   const { data: fuzzyMatch } = await supabase
-    .from('ims_ref_supplier')
+    .from('ims_supplier')
     .select('*')
     .ilike('name', `%${name}%`)
     .eq('is_active', true)
@@ -191,27 +195,30 @@ export async function matchSupplier(name: string): Promise<Supplier | null> {
 
 /**
  * 创建新供应商（或返回已存在的）
+ * v4.0 - 添加 brandId 参数，新建供应商时绑定品牌
  * v3.4 - 用于"其他"供应商自动入库
+ * @param name 供应商名称
+ * @param brandId 品牌ID (1=野百灵, 2=宁桂杏, 3=通用)，默认为 3（通用）
  */
-export async function createOrGetSupplier(name: string): Promise<Supplier> {
+export async function createOrGetSupplier(name: string, brandId: number = 3): Promise<Supplier> {
   const trimmedName = name.trim();
 
-  // 先检查是否已存在
+  // 先检查是否已存在（同名同品牌）
   const { data: existing } = await supabase
-    .from('ims_ref_supplier')
+    .from('ims_supplier')
     .select('*')
     .eq('name', trimmedName)
     .single();
 
   if (existing) {
-    console.log(`[供应商] 已存在: ${trimmedName} (ID: ${existing.id})`);
+    console.log(`[供应商] 已存在: ${trimmedName} (ID: ${existing.id}, brand_id: ${existing.brand_id})`);
     return existing;
   }
 
-  // 不存在则创建新的
+  // 不存在则创建新的，绑定品牌ID
   const { data: newSupplier, error } = await supabase
-    .from('ims_ref_supplier')
-    .insert({ name: trimmedName, is_active: true })
+    .from('ims_supplier')
+    .insert({ name: trimmedName, is_active: true, brand_id: brandId })
     .select()
     .single();
 
@@ -220,7 +227,7 @@ export async function createOrGetSupplier(name: string): Promise<Supplier> {
     throw error;
   }
 
-  console.log(`[供应商] 新增: ${trimmedName} (ID: ${newSupplier.id})`);
+  console.log(`[供应商] 新增: ${trimmedName} (ID: ${newSupplier.id}, brand_id: ${brandId})`);
   return newSupplier;
 }
 
@@ -467,11 +474,11 @@ export async function createPurchasePrices(records: StorePurchasePrice[]): Promi
 
 /**
  * 测试 Supabase 连接
- * v2.2 - 使用 ims_ref_supplier 表
+ * v4.0 - 使用 ims_supplier 表
  */
 export async function testConnection(): Promise<boolean> {
   try {
-    const { error } = await supabase.from('ims_ref_supplier').select('id').limit(1);
+    const { error } = await supabase.from('ims_supplier').select('id').limit(1);
     return !error;
   } catch {
     return false;
@@ -710,7 +717,7 @@ export type DateFilterType = 'today' | 'week' | 'month' | 'all';
  * @param dateFilter 日期筛选类型
  * @returns 历史记录列表
  */
-// v5.0: 修复供应商名称显示 - 通过 supplier_id 关联 ims_ref_supplier 表获取名称
+// v5.0: 修复供应商名称显示 - 通过 supplier_id 关联 ims_supplier 表获取名称
 export async function getProcurementHistory(
   page: number = 0,
   pageSize: number = 20,
@@ -723,7 +730,7 @@ export async function getProcurementHistory(
   // v5.0: 使用关联查询获取供应商名称
   let query = supabase
     .from('ims_material_price')
-    .select('*, ims_ref_supplier(name)', { count: 'exact' })
+    .select('*, ims_supplier(name)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -775,7 +782,7 @@ export async function getProcurementHistory(
     data: (data || []).map(item => ({
       id: item.id,
       item_name: item.item_name,
-      supplier_name: item.ims_ref_supplier?.name || item.supplier_name,
+      supplier_name: item.ims_supplier?.name || item.supplier_name,
       quantity: parseFloat(item.quantity) || 0,
       unit: item.unit,
       unit_price: parseFloat(item.unit_price) || 0,
