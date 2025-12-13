@@ -1,0 +1,2092 @@
+{
+  "肉类": [
+    {
+      "seq_num": 1,
+      "category": "牛肉",
+      "name": "肥牛",
+      "spec": "斤",
+      "price": 45.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 2,
+      "category": "牛肉",
+      "name": "黄标和牛牛舌",
+      "spec": "斤",
+      "price": 35,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 3,
+      "category": "牛肉",
+      "name": "32厂长肋条",
+      "spec": "斤",
+      "price": 82.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 4,
+      "category": "牛肉",
+      "name": "竖切肩甲仔骨",
+      "spec": "斤",
+      "price": 49,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 5,
+      "category": "牛肉",
+      "name": "牛板腱",
+      "spec": "斤",
+      "price": 50,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 6,
+      "category": "猪肉",
+      "name": "贵州小肠",
+      "spec": "500g*10袋 /件",
+      "price": "=600/20",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 7,
+      "category": "猪肉",
+      "name": "5A肥肠",
+      "spec": "500g*20袋  /件",
+      "price": 32.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 8,
+      "category": "猪肉",
+      "name": "猪肋条",
+      "spec": "1kg*10袋  /件",
+      "price": 21,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 9,
+      "category": "猪肉",
+      "name": "松板肉",
+      "spec": "2.5kg/袋*4袋/件",
+      "price": 16.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 10,
+      "category": "猪肉",
+      "name": "抽骨猪五花",
+      "spec": "斤",
+      "price": 23.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 11,
+      "category": "猪肉",
+      "name": "原味排骨",
+      "spec": "1kg*15袋 /件",
+      "price": 25,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 12,
+      "category": "鸡肉",
+      "name": "熟成黄油鸡腿",
+      "spec": "斤",
+      "price": "=145/18",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 13,
+      "category": "鸡肉",
+      "name": "原味掌中宝",
+      "spec": "1kg*10袋/件",
+      "price": "=280/20",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 14,
+      "category": "海鲜",
+      "name": "鳗鱼",
+      "spec": "30斤/件",
+      "price": 55,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 15,
+      "category": "海鲜",
+      "name": "飞鱼籽",
+      "spec": "1kg/袋",
+      "price": 150,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 16,
+      "category": "海鲜",
+      "name": "30/40虾",
+      "spec": "1.5kg*6盒/件",
+      "price": "=430/6",
+      "unit": "盒"
+    },
+    {
+      "seq_num": 17,
+      "category": "海鲜",
+      "name": "芥末甜虾",
+      "spec": "500g/盒",
+      "price": 50,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 18,
+      "category": "海鲜",
+      "name": "虾滑",
+      "spec": "500g/20袋/件",
+      "price": 36,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 19,
+      "category": "海鲜",
+      "name": "小管",
+      "spec": "20斤/件",
+      "price": 15.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 20,
+      "category": "炸物",
+      "name": "糍粑",
+      "spec": "1075g*10袋 /件",
+      "price": "=180/10",
+      "unit": "包"
+    },
+    {
+      "seq_num": 21,
+      "category": "炸物",
+      "name": "锅巴土豆",
+      "spec": "1kg*10袋/件",
+      "price": 11,
+      "unit": "包"
+    },
+    {
+      "seq_num": 22,
+      "category": "干杂",
+      "name": "地扪菠萝罐头",
+      "spec": "825g*24罐/件",
+      "price": "=295/24",
+      "unit": "罐"
+    },
+    {
+      "seq_num": 23,
+      "category": "干杂",
+      "name": "东北酸菜",
+      "spec": "500g*10袋  /件",
+      "price": 3.5,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 24,
+      "category": "干杂",
+      "name": "手剥笋",
+      "spec": "500g*10袋 /件",
+      "price": 12.6,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 25,
+      "category": "干杂",
+      "name": "辣白菜",
+      "spec": "10KG/件",
+      "price": 4.75,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 26,
+      "category": "干杂",
+      "name": "山葱叶",
+      "spec": "2500g/袋",
+      "price": 25,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 27,
+      "category": "干杂",
+      "name": "清净园海苔",
+      "spec": "4g/包",
+      "price": 1.2,
+      "unit": "包"
+    },
+    {
+      "seq_num": 28,
+      "category": "干杂",
+      "name": "海苔碎",
+      "spec": "400g/包",
+      "price": 23,
+      "unit": "包"
+    },
+    {
+      "seq_num": 29,
+      "category": "干杂",
+      "name": "溏心蛋",
+      "spec": "个",
+      "price": 3,
+      "unit": "个"
+    },
+    {
+      "seq_num": 30,
+      "category": "干杂",
+      "name": "软哨",
+      "spec": "500g/袋",
+      "price": 36,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 33,
+      "category": "干杂",
+      "name": "欧芹碎",
+      "spec": "141g/瓶",
+      "price": 20.8,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 34,
+      "category": "干杂",
+      "name": "冰淇淋",
+      "spec": "3.5Kg/桶",
+      "price": 89,
+      "unit": "桶"
+    },
+    {
+      "seq_num": 35,
+      "category": "干杂",
+      "name": "玫瑰海盐",
+      "spec": "500g/袋",
+      "price": 15,
+      "unit": "瓶"
+    }
+  ],
+  "蔬菜": [
+    {
+      "seq_num": 1,
+      "category": "蔬菜",
+      "name": "七彩土豆",
+      "spec": "斤",
+      "price": 6,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 2,
+      "category": "蔬菜",
+      "name": "黄心土豆",
+      "spec": "斤",
+      "price": 1.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 3,
+      "category": "蔬菜",
+      "name": "秋葵",
+      "spec": "斤",
+      "price": 10,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 4,
+      "category": "蔬菜",
+      "name": "生菜",
+      "spec": "斤",
+      "price": 3,
+      "unit": "斤"
+    },
+    {
+      "seq_num": null,
+      "category": "蔬菜",
+      "name": "紫生菜",
+      "spec": "斤",
+      "price": 10,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 5,
+      "category": "蔬菜",
+      "name": "白萝卜",
+      "spec": "斤",
+      "price": 1.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 6,
+      "category": "蔬菜",
+      "name": "紫洋葱",
+      "spec": "斤",
+      "price": 1.72,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 7,
+      "category": "蔬菜",
+      "name": "大葱",
+      "spec": "斤",
+      "price": 2.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 8,
+      "category": "蔬菜",
+      "name": "小葱",
+      "spec": "斤",
+      "price": 5.6,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 9,
+      "category": "蔬菜",
+      "name": "二荆条",
+      "spec": "斤",
+      "price": 4.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 10,
+      "category": "蔬菜",
+      "name": "红椒",
+      "spec": "斤",
+      "price": 9,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 11,
+      "category": "蔬菜",
+      "name": "莲白",
+      "spec": "斤",
+      "price": 1,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 12,
+      "category": "蔬菜",
+      "name": "香菜",
+      "spec": "斤",
+      "price": 10,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 13,
+      "category": "蔬菜",
+      "name": "三月瓜",
+      "spec": "斤",
+      "price": 2.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 14,
+      "category": "蔬菜",
+      "name": "折耳根",
+      "spec": "斤",
+      "price": 6,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 15,
+      "category": "蔬菜",
+      "name": "红小米椒",
+      "spec": "斤",
+      "price": 7,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 16,
+      "category": "蔬菜",
+      "name": "口蘑",
+      "spec": "斤",
+      "price": 11.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 18,
+      "category": "蔬菜",
+      "name": "杏鲍菇",
+      "spec": "斤",
+      "price": 5.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 22,
+      "category": "蔬菜",
+      "name": "酸豇豆",
+      "spec": "斤",
+      "price": 4.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 23,
+      "category": "蔬菜",
+      "name": "去皮蒜",
+      "spec": "斤",
+      "price": 4.2,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 24,
+      "category": "蔬菜",
+      "name": "老姜",
+      "spec": "斤",
+      "price": 5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 25,
+      "category": "蔬菜",
+      "name": "贝贝南瓜",
+      "spec": "斤",
+      "price": 3.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 26,
+      "category": "蔬菜",
+      "name": "芭蕉叶",
+      "spec": "斤",
+      "price": 7.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": null,
+      "category": "蔬菜",
+      "name": "黄瓜",
+      "spec": "斤",
+      "price": 4.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 27,
+      "category": "蔬菜",
+      "name": "内酯豆腐",
+      "spec": "斤",
+      "price": 1.8,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 28,
+      "category": "蔬菜",
+      "name": "排骨",
+      "spec": "斤",
+      "price": 23,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 29,
+      "category": "蔬菜",
+      "name": "西红柿",
+      "spec": "斤",
+      "price": 3.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 30,
+      "category": "蔬菜",
+      "name": "豆芽",
+      "spec": "斤",
+      "price": 1.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 31,
+      "category": "蔬菜",
+      "name": "生姜",
+      "spec": "斤",
+      "price": 7.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 32,
+      "category": "蔬菜",
+      "name": "香水柠檬",
+      "spec": "斤",
+      "price": 9,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 33,
+      "category": "蔬菜",
+      "name": "芝麻菜",
+      "spec": "斤",
+      "price": 12,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 34,
+      "category": "蔬菜",
+      "name": "黄柠檬",
+      "spec": "斤",
+      "price": 5.3,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 35,
+      "category": "蔬菜",
+      "name": "迷迭香",
+      "spec": "斤",
+      "price": 7,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 36,
+      "category": "蔬菜",
+      "name": "干葱",
+      "spec": "斤",
+      "price": 5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 37,
+      "category": "蔬菜",
+      "name": "橙子",
+      "spec": "斤",
+      "price": 5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 38,
+      "category": "蔬菜",
+      "name": "玉米",
+      "spec": "斤",
+      "price": 5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 39,
+      "category": "蔬菜",
+      "name": "咸鸭蛋",
+      "spec": "斤",
+      "price": 2,
+      "unit": "个"
+    },
+    {
+      "seq_num": 40,
+      "category": "蔬菜",
+      "name": "馒头",
+      "spec": "斤",
+      "price": 1,
+      "unit": "个"
+    },
+    {
+      "seq_num": 41,
+      "category": "蔬菜",
+      "name": "樟树港辣椒",
+      "spec": "斤",
+      "price": 12,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 42,
+      "category": "蔬菜",
+      "name": "青金桔",
+      "spec": "斤",
+      "price": 6,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 43,
+      "category": "蔬菜",
+      "name": "橙子",
+      "spec": "斤",
+      "price": 6,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 44,
+      "category": "蔬菜",
+      "name": "球盖菇",
+      "spec": "斤",
+      "price": 20,
+      "unit": "斤"
+    }
+  ],
+  "干杂调味品": [
+    {
+      "seq_num": 1,
+      "category": "干杂",
+      "name": "车轮黄油",
+      "spec": "16kg/桶",
+      "price": "=360/16/2",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 2,
+      "category": "干杂",
+      "name": "顿可红油",
+      "spec": "10斤/桶",
+      "price": 9,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 3,
+      "category": "干杂",
+      "name": "起酥油",
+      "spec": "16kg/件",
+      "price": 8.75,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 4,
+      "category": "干杂",
+      "name": "苕皮",
+      "spec": "12袋/3斤/件",
+      "price": "=155/12",
+      "unit": "袋"
+    },
+    {
+      "seq_num": 5,
+      "category": "干杂",
+      "name": "料理清酒（淘宝网采）",
+      "spec": "1.8L/瓶",
+      "price": 28,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 6,
+      "category": "干杂",
+      "name": "大红袍火锅底料",
+      "spec": "400克/袋",
+      "price": 9.5,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 7,
+      "category": "干杂",
+      "name": "3a香粉",
+      "spec": "20g/袋",
+      "price": 2.5,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 8,
+      "category": "干杂",
+      "name": "鲜味宝",
+      "spec": "斤",
+      "price": 6,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 9,
+      "category": "干杂",
+      "name": "咸蛋黄粉（淘宝网采）",
+      "spec": "1*920g/袋",
+      "price": 29.8,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 10,
+      "category": "干杂",
+      "name": "安佳芝士碎（淘宝网采）",
+      "spec": "1*12kg",
+      "price": "=475/24",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 11,
+      "category": "干杂",
+      "name": "色拉油",
+      "spec": "27L/桶",
+      "price": 5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 12,
+      "category": "干杂",
+      "name": "鸡精",
+      "spec": "455g/袋",
+      "price": 25,
+      "unit": "包"
+    },
+    {
+      "seq_num": 13,
+      "category": "干杂",
+      "name": "味精",
+      "spec": "400g/袋",
+      "price": 8.5,
+      "unit": "包"
+    },
+    {
+      "seq_num": 14,
+      "category": "干杂",
+      "name": "食盐",
+      "spec": "350g/袋",
+      "price": 1,
+      "unit": "包"
+    },
+    {
+      "seq_num": 15,
+      "category": "干杂",
+      "name": "黄豆粉",
+      "spec": "斤",
+      "price": 5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 16,
+      "category": "干杂",
+      "name": "枫叶",
+      "spec": "张",
+      "price": 0.26,
+      "unit": "张"
+    },
+    {
+      "seq_num": 17,
+      "category": "干杂",
+      "name": "东古一品鲜",
+      "spec": "500ml/瓶",
+      "price": 9.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 18,
+      "category": "干杂",
+      "name": "香醋",
+      "spec": "500ml/瓶",
+      "price": 3.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 19,
+      "category": "干杂",
+      "name": "白胡椒",
+      "spec": "斤",
+      "price": 15,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 20,
+      "category": "干杂",
+      "name": "老抽",
+      "spec": "1.9L/瓶",
+      "price": 15.8,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 21,
+      "category": "干杂",
+      "name": "香油",
+      "spec": "450ml/瓶",
+      "price": 15.2,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 22,
+      "category": "干杂",
+      "name": "耗油",
+      "spec": "10kg/桶",
+      "price": 80,
+      "unit": "桶"
+    },
+    {
+      "seq_num": 23,
+      "category": "干杂",
+      "name": "豆瓣酱",
+      "spec": "1kg/瓶",
+      "price": 11,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 24,
+      "category": "干杂",
+      "name": "白芝麻",
+      "spec": "斤",
+      "price": 12.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 25,
+      "category": "干杂",
+      "name": "黑芝麻",
+      "spec": "斤",
+      "price": 10,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 26,
+      "category": "干杂",
+      "name": "大米",
+      "spec": "25kg/袋",
+      "price": 2.7,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 27,
+      "category": "干杂",
+      "name": "糯米",
+      "spec": "斤",
+      "price": 3.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 28,
+      "category": "干杂",
+      "name": "鸡蛋",
+      "spec": "斤",
+      "price": 5.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 29,
+      "category": "干杂",
+      "name": "黑芝麻",
+      "spec": "斤",
+      "price": 15,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 30,
+      "category": "干杂",
+      "name": "干奶酪",
+      "spec": "200g/个",
+      "price": 47,
+      "unit": "个"
+    },
+    {
+      "seq_num": 31,
+      "category": "干杂",
+      "name": "白糖",
+      "spec": "斤",
+      "price": 5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 32,
+      "category": "干杂",
+      "name": "细砂糖",
+      "spec": "斤",
+      "price": 6.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 33,
+      "category": "干杂",
+      "name": "枫叶",
+      "spec": "90张/袋",
+      "price": 24.27,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 34,
+      "category": "干杂",
+      "name": "十三香",
+      "spec": "45g/袋",
+      "price": 4,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 35,
+      "category": "干杂",
+      "name": "粽叶",
+      "spec": "100张/袋",
+      "price": 0.068,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 36,
+      "category": "干杂",
+      "name": "生抽",
+      "spec": "1.9L/瓶",
+      "price": 15,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 37,
+      "category": "干杂",
+      "name": "香辣酱",
+      "spec": "350g/瓶",
+      "price": 8,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 38,
+      "category": "干杂",
+      "name": "藤椒油",
+      "spec": "500ml/瓶",
+      "price": 24.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 39,
+      "category": "干杂",
+      "name": "黑胡椒碎",
+      "spec": "400g/瓶",
+      "price": 47,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 40,
+      "category": "干杂",
+      "name": "嫩肉粉",
+      "spec": "260g/瓶",
+      "price": 4.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 41,
+      "category": "干杂",
+      "name": "生粉",
+      "spec": "斤",
+      "price": 3.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 42,
+      "category": "干杂",
+      "name": "安多夫",
+      "spec": "453.6g/瓶",
+      "price": 14,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 43,
+      "category": "干杂",
+      "name": "老抽",
+      "spec": "500g/瓶",
+      "price": 5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 44,
+      "category": "干杂",
+      "name": "保鲜膜",
+      "spec": "35ml",
+      "price": 25,
+      "unit": "卷"
+    },
+    {
+      "seq_num": 45,
+      "category": "干杂",
+      "name": "保鲜膜",
+      "spec": "55ml",
+      "price": 35,
+      "unit": "卷"
+    },
+    {
+      "seq_num": 46,
+      "category": "干杂",
+      "name": "片碱",
+      "spec": "斤",
+      "price": 3,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 47,
+      "category": "干杂",
+      "name": "腌肉粉",
+      "spec": "斤",
+      "price": 3,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 48,
+      "category": "干杂",
+      "name": "客用黑胡椒",
+      "spec": "50g",
+      "price": 14.58,
+      "unit": "罐"
+    },
+    {
+      "seq_num": 49,
+      "category": "干杂",
+      "name": "烤盐",
+      "spec": "斤",
+      "price": 45,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 50,
+      "category": "干杂",
+      "name": "糯米",
+      "spec": "斤",
+      "price": 3.5,
+      "unit": "斤"
+    }
+  ],
+  "酱料": [
+    {
+      "seq_num": 1,
+      "category": "酱料",
+      "name": "油泼辣子",
+      "spec": "2斤/袋 *10袋/件",
+      "price": 18,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 2,
+      "category": "酱料",
+      "name": "包肉酱",
+      "spec": "2斤/袋 *10袋/件",
+      "price": 9,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 5,
+      "category": "酱料",
+      "name": "剁椒酱",
+      "spec": "2斤/袋 *10袋/件",
+      "price": 15,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 6,
+      "category": "酱料",
+      "name": "齐齐哈儿红酱",
+      "spec": "1000g/袋*/",
+      "price": 12,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 7,
+      "category": "酱料",
+      "name": "酸辣汁",
+      "spec": "2斤/袋 10袋/件",
+      "price": 9,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 8,
+      "category": "酱料",
+      "name": "苏籽五香粉",
+      "spec": "2斤/袋 10袋/件",
+      "price": 15,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 9,
+      "category": "酱料",
+      "name": "辣椒面",
+      "spec": "2斤/袋 10袋/件",
+      "price": 16,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 10,
+      "category": "酱料",
+      "name": "咸蛋黄酱",
+      "spec": "500g*20袋/件",
+      "price": "=825/20",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 12,
+      "category": "酱料",
+      "name": "糟辣椒酱",
+      "spec": "4斤/袋",
+      "price": 15,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 14,
+      "category": "酱料",
+      "name": "黑松露酱",
+      "spec": "500克/瓶",
+      "price": 98,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 15,
+      "category": "酱料",
+      "name": "黄辣酱蘸料",
+      "spec": "1000g/袋",
+      "price": "=44.9/2",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 16,
+      "category": "酱料",
+      "name": "原味鲜蘸汁",
+      "spec": "1000g/袋",
+      "price": 10,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 17,
+      "category": "酱料",
+      "name": "原味五香干料",
+      "spec": "500g/袋",
+      "price": 14.5,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 18,
+      "category": "酱料",
+      "name": "山葵酱",
+      "spec": "750g/袋",
+      "price": 60,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 19,
+      "category": "酱料",
+      "name": "香肉腌肉汁",
+      "spec": "2000g/袋",
+      "price": 11,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 23,
+      "category": "酱料",
+      "name": "芥末酱（淘宝网采）",
+      "spec": "1000g/袋",
+      "price": "=46.56/2",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 24,
+      "category": "酱料",
+      "name": "蜂蜜芥末酱（淘宝网采）",
+      "spec": "1000g/袋",
+      "price": "=17.8/2",
+      "unit": "斤"
+    },
+    {
+      "seq_num": 26,
+      "category": "酱料",
+      "name": "咸蛋黄粉",
+      "spec": "920克",
+      "price": 29.8,
+      "unit": "袋"
+    }
+  ],
+  "糖水铺": [
+    {
+      "seq_num": 1,
+      "category": "糖水",
+      "name": "鸭屎香茶叶",
+      "spec": "300克/包*20包/箱",
+      "price": 29,
+      "unit": "包"
+    },
+    {
+      "seq_num": 2,
+      "category": "糖水",
+      "name": "芭乐汁",
+      "spec": "1kg*12袋/件",
+      "price": 30,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 3,
+      "category": "糖水",
+      "name": "水蜜桃果茸",
+      "spec": "500g*20包/件",
+      "price": 15,
+      "unit": "包"
+    },
+    {
+      "seq_num": 4,
+      "category": "糖水",
+      "name": "糖浆",
+      "spec": "2.5千克/瓶*6瓶/箱",
+      "price": 20,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 5,
+      "category": "糖水",
+      "name": "丁片",
+      "spec": "1kg*1袋",
+      "price": 99,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 6,
+      "category": "糖水",
+      "name": "牛奶风味粉",
+      "spec": "800g/包*20包/箱",
+      "price": 28,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 7,
+      "category": "糖水",
+      "name": "桂花酒量苹果果味酱",
+      "spec": "1.2kg/罐*12罐/箱",
+      "price": 45,
+      "unit": "罐"
+    },
+    {
+      "seq_num": 8,
+      "category": "糖水",
+      "name": "米浆风味固体",
+      "spec": "1kg/包*20包/件",
+      "price": 36,
+      "unit": "包"
+    },
+    {
+      "seq_num": 9,
+      "category": "糖水",
+      "name": "金桔柠檬",
+      "spec": "1200g/瓶*12瓶/箱",
+      "price": 48,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 10,
+      "category": "糖水",
+      "name": "雪域藏茶",
+      "spec": "500g*20包/件",
+      "price": 80,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 11,
+      "category": "糖水",
+      "name": "山楂饮料浓浆",
+      "spec": "1.5kg/瓶*12瓶/箱",
+      "price": 28,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 12,
+      "category": "糖水",
+      "name": "淡奶油（雀巢-可打发）",
+      "spec": "1L*12盒/件",
+      "price": 22.92,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 13,
+      "category": "糖水",
+      "name": "蔗糖",
+      "spec": "2500g/瓶",
+      "price": 42,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 14,
+      "category": "糖水",
+      "name": "焦糖薄脆",
+      "spec": "500g/袋",
+      "price": 10.5,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 15,
+      "category": "糖水",
+      "name": "纯牛奶",
+      "spec": "1升",
+      "price": 13.2,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 16,
+      "category": "糖水",
+      "name": "帕玛森芝士奶酪（三角形）",
+      "spec": "260g/袋",
+      "price": 72,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 17,
+      "category": "糖水",
+      "name": "香草味冰激凌",
+      "spec": "3.5kg/桶",
+      "price": 12.7142857142857,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 18,
+      "category": "糖水",
+      "name": "面包丝",
+      "spec": "500g*1袋",
+      "price": 21,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 19,
+      "category": "糖水",
+      "name": "奶油奶酪吧台",
+      "spec": "2kg*1包",
+      "price": 80.5,
+      "unit": "包"
+    },
+    {
+      "seq_num": 20,
+      "category": "糖水",
+      "name": "冰粉粉",
+      "spec": "50g*40袋（84元）",
+      "price": "=84/40",
+      "unit": "袋"
+    },
+    {
+      "seq_num": 21,
+      "category": "糖水",
+      "name": "白玉丸子",
+      "spec": "24袋/件",
+      "price": "=370/24",
+      "unit": "袋"
+    },
+    {
+      "seq_num": 22,
+      "category": "糖水",
+      "name": "黄豆粉",
+      "spec": "500g*1包",
+      "price": 7.8,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 23,
+      "category": "糖水",
+      "name": "红糖浆",
+      "spec": "500g/瓶",
+      "price": 11.8,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 24,
+      "category": "糖水",
+      "name": "新鲜干桂花",
+      "spec": "250克/袋",
+      "price": 50,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 25,
+      "category": "糖水",
+      "name": "23cm长吸管（粗）",
+      "spec": "长吸管",
+      "price": "=46.8/1000",
+      "unit": "根"
+    },
+    {
+      "seq_num": 26,
+      "category": "糖水",
+      "name": "一次性透明细吸管（细）",
+      "spec": "长吸管",
+      "price": "=34.6/1000",
+      "unit": "根"
+    },
+    {
+      "seq_num": 27,
+      "category": "糖水",
+      "name": "98口径奶茶杯子",
+      "spec": "100个/套",
+      "price": "=45.8/100",
+      "unit": "个"
+    },
+    {
+      "seq_num": 28,
+      "category": "糖水",
+      "name": "网红一次性桂花贴",
+      "spec": "张",
+      "price": "=13.8/100",
+      "unit": "张"
+    },
+    {
+      "seq_num": 29,
+      "category": "糖水",
+      "name": "黄柠檬",
+      "spec": "500g*斤",
+      "price": 10,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 30,
+      "category": "糖水",
+      "name": "香水柠檬",
+      "spec": "500g*斤",
+      "price": 4,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 31,
+      "category": "糖水",
+      "name": "米婆婆醪糟",
+      "spec": "900g*6瓶/件",
+      "price": 13,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 32,
+      "category": "糖水",
+      "name": "巴斯克",
+      "spec": "150克/盒",
+      "price": 16,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 33,
+      "category": "糖水",
+      "name": "延边米酒",
+      "spec": "500g/瓶",
+      "price": 15,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 34,
+      "category": "糖水",
+      "name": "椰浆",
+      "spec": "1升/盒",
+      "price": 20.42,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 35,
+      "category": "糖水",
+      "name": "冻草莓",
+      "spec": "1kg*10袋/件",
+      "price": 22,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 36,
+      "category": "糖水",
+      "name": "冻桑葚",
+      "spec": "1kg*10袋/件",
+      "price": 25,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 37,
+      "category": "糖水",
+      "name": "草莓浓浆",
+      "spec": "1kg*12袋/件",
+      "price": 42,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 38,
+      "category": "糖水",
+      "name": "椰丝",
+      "spec": "300克/包",
+      "price": 18.63,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 39,
+      "category": "糖水",
+      "name": "山茶花乌龙茶",
+      "spec": "300克/包",
+      "price": 40,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 40,
+      "category": "糖水",
+      "name": "鲜芭乐果",
+      "spec": "斤",
+      "price": 7.6,
+      "unit": "斤"
+    }
+  ],
+  "酒水": [
+    {
+      "seq_num": 1,
+      "category": "酒水",
+      "name": "朝日现打生啤",
+      "spec": "20L/桶",
+      "price": 280,
+      "unit": "桶"
+    },
+    {
+      "seq_num": 2,
+      "category": "酒水",
+      "name": "朝日啤酒（瓶装）",
+      "spec": "12瓶/件",
+      "price": 7.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 3,
+      "category": "酒水",
+      "name": "真露（西柚）",
+      "spec": "",
+      "price": null,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 4,
+      "category": "酒水",
+      "name": "真露（李子）",
+      "spec": "",
+      "price": null,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 5,
+      "category": "酒水",
+      "name": "真露（青提）",
+      "spec": "",
+      "price": null,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 6,
+      "category": "酒水",
+      "name": "延边米酒",
+      "spec": "1L/罐",
+      "price": 31.94,
+      "unit": "罐"
+    },
+    {
+      "seq_num": 7,
+      "category": "酒水",
+      "name": "燕京纯生",
+      "spec": "12瓶/件",
+      "price": 3.458,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 8,
+      "category": "酒水",
+      "name": "燕京U8",
+      "spec": "12瓶/件",
+      "price": 4,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 9,
+      "category": "酒水",
+      "name": "福佳白",
+      "spec": "24瓶/件",
+      "price": 5.21,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 10,
+      "category": "酒水",
+      "name": "科罗娜",
+      "spec": "24瓶/件",
+      "price": 5.833,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 11,
+      "category": "酒水",
+      "name": "1664（白啤）",
+      "spec": "24瓶/件",
+      "price": 9.375,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 12,
+      "category": "酒水",
+      "name": "1664（桃红）",
+      "spec": "24瓶/件",
+      "price": 10.208,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 13,
+      "category": "酒水",
+      "name": "可口可乐（厅装）",
+      "spec": "24厅/件",
+      "price": 1.875,
+      "unit": "厅"
+    },
+    {
+      "seq_num": 14,
+      "category": "酒水",
+      "name": "雪碧（厅装）",
+      "spec": "24厅/件",
+      "price": 1.875,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 15,
+      "category": "酒水",
+      "name": "鲜橙多（厅装）",
+      "spec": "24厅/件",
+      "price": 1.875,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 16,
+      "category": "酒水",
+      "name": "王老吉（厅装）",
+      "spec": "24厅/件",
+      "price": 2.25,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 17,
+      "category": "酒水",
+      "name": "小唯怡（瓶）",
+      "spec": "20瓶/件",
+      "price": 4.1,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 18,
+      "category": "酒水",
+      "name": "麒麟",
+      "spec": "12瓶/件",
+      "price": 7.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 19,
+      "category": "酒水",
+      "name": "江小白",
+      "spec": "24瓶/件",
+      "price": 13.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 20,
+      "category": "酒水",
+      "name": "梅见",
+      "spec": "12瓶/件",
+      "price": 23.33,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 21,
+      "category": "酒水",
+      "name": "果粒橙",
+      "spec": "瓶",
+      "price": 6.66,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 22,
+      "category": "酒水",
+      "name": "大窑",
+      "spec": "12瓶/件",
+      "price": 2.91,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 23,
+      "category": "酒水",
+      "name": "北冰洋",
+      "spec": "24瓶/件",
+      "price": 5.2,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 24,
+      "category": "酒水",
+      "name": "大蓝花郎",
+      "spec": "12瓶/件",
+      "price": 55,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 25,
+      "category": "酒水",
+      "name": "墨渊",
+      "spec": "6瓶/件",
+      "price": 50,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 26,
+      "category": "酒水",
+      "name": "小郎酒",
+      "spec": "24瓶/件",
+      "price": 13.5,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 27,
+      "category": "酒水",
+      "name": "窝托泉",
+      "spec": "24瓶/件",
+      "price": 1.3125,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 28,
+      "category": "酒水",
+      "name": "苏打水",
+      "spec": "24瓶/件",
+      "price": 1.875,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 29,
+      "category": "酒水",
+      "name": "教士",
+      "spec": "12瓶/件",
+      "price": 6.25,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 30,
+      "category": "酒水",
+      "name": "酸奶",
+      "spec": "瓶",
+      "price": 9,
+      "unit": "瓶"
+    }
+  ],
+  "低耗": [
+    {
+      "seq_num": 1,
+      "category": "易耗品",
+      "name": "洁厕王",
+      "spec": "500g/瓶",
+      "price": "=39.8/20",
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 2,
+      "category": "易耗品",
+      "name": "保鲜袋",
+      "spec": "",
+      "price": 25,
+      "unit": "卷"
+    },
+    {
+      "seq_num": 3,
+      "category": "易耗品",
+      "name": "PE手套",
+      "spec": "10盒/件",
+      "price": "=225/10",
+      "unit": "盒"
+    },
+    {
+      "seq_num": 4,
+      "category": "易耗品",
+      "name": "洗衣粉",
+      "spec": "200g/包",
+      "price": 3,
+      "unit": "包"
+    },
+    {
+      "seq_num": 5,
+      "category": "易耗品",
+      "name": "垃圾袋",
+      "spec": "40个/把  10把/件",
+      "price": 17.5,
+      "unit": "把"
+    },
+    {
+      "seq_num": 6,
+      "category": "易耗品",
+      "name": "一次性筷子",
+      "spec": "140套/箱（每箱61元）",
+      "price": 61,
+      "unit": "箱"
+    },
+    {
+      "seq_num": 7,
+      "category": "易耗品",
+      "name": "热敏打印纸",
+      "spec": "40卷/箱",
+      "price": 3.88,
+      "unit": "卷"
+    },
+    {
+      "seq_num": 8,
+      "category": "易耗品",
+      "name": "排号机打印纸",
+      "spec": "卷",
+      "price": 0.6,
+      "unit": "卷"
+    },
+    {
+      "seq_num": 9,
+      "category": "易耗品",
+      "name": "湿纸巾",
+      "spec": "10包/箱",
+      "price": 2.98,
+      "unit": "包"
+    },
+    {
+      "seq_num": 10,
+      "category": "易耗品",
+      "name": "抽纸",
+      "spec": "84包/件",
+      "price": 1.3,
+      "unit": "包"
+    },
+    {
+      "seq_num": 11,
+      "category": "易耗品",
+      "name": "保鲜膜",
+      "spec": "6卷/件（每件135）",
+      "price": "=125/6",
+      "unit": "卷（40cm）"
+    },
+    {
+      "seq_num": 12,
+      "category": "易耗品",
+      "name": "一次性围裙",
+      "spec": "条",
+      "price": 0.43,
+      "unit": "条"
+    },
+    {
+      "seq_num": 13,
+      "category": "易耗品",
+      "name": "花露水",
+      "spec": "瓶",
+      "price": 10,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 14,
+      "category": "易耗品",
+      "name": "口罩",
+      "spec": "50只/包*6包/件",
+      "price": "=39.8/6",
+      "unit": "包"
+    },
+    {
+      "seq_num": 15,
+      "category": "易耗品",
+      "name": "打包袋",
+      "spec": "50个/把",
+      "price": 17.27,
+      "unit": "把"
+    },
+    {
+      "seq_num": 16,
+      "category": "易耗品",
+      "name": "口布",
+      "spec": "白色 46cm*57cm",
+      "price": 2.4,
+      "unit": "条"
+    },
+    {
+      "seq_num": 17,
+      "category": "易耗品",
+      "name": "粗吸管",
+      "spec": "",
+      "price": 0.0284,
+      "unit": "根"
+    },
+    {
+      "seq_num": 18,
+      "category": "易耗品",
+      "name": "擦手纸",
+      "spec": "件",
+      "price": 85,
+      "unit": "件"
+    },
+    {
+      "seq_num": 19,
+      "category": "易耗品",
+      "name": "牙线",
+      "spec": "500/包",
+      "price": 27.8,
+      "unit": "包"
+    },
+    {
+      "seq_num": 20,
+      "category": "易耗品",
+      "name": "一次性手套（黑）",
+      "spec": "200只/盒",
+      "price": 37,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 21,
+      "category": "易耗品",
+      "name": "84消毒液",
+      "spec": "10斤/瓶",
+      "price": 22,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 22,
+      "category": "易耗品",
+      "name": "地板清洁剂",
+      "spec": "5kg/瓶",
+      "price": 20,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 23,
+      "category": "易耗品",
+      "name": "洗涤剂（洗涤精）",
+      "spec": "50斤/桶",
+      "price": 50,
+      "unit": "桶"
+    },
+    {
+      "seq_num": 24,
+      "category": "易耗品",
+      "name": "打包盒",
+      "spec": "方形650ml玉米淀粉盒  300套",
+      "price": "=165/300",
+      "unit": "套"
+    },
+    {
+      "seq_num": 25,
+      "category": "易耗品",
+      "name": "网帽",
+      "spec": "60个/包  20包/件",
+      "price": 5,
+      "unit": "包"
+    },
+    {
+      "seq_num": 26,
+      "category": "易耗品",
+      "name": "细吸管",
+      "spec": "",
+      "price": "=8.8/250",
+      "unit": "根"
+    },
+    {
+      "seq_num": 27,
+      "category": "易耗品",
+      "name": "小垃圾袋",
+      "spec": "",
+      "price": 2.25,
+      "unit": "把"
+    },
+    {
+      "seq_num": 28,
+      "category": "易耗品",
+      "name": "一次性筷子",
+      "spec": "500/包",
+      "price": 53.5,
+      "unit": "包"
+    },
+    {
+      "seq_num": 29,
+      "category": "易耗品",
+      "name": "一次性杯子",
+      "spec": "50/袋",
+      "price": 6,
+      "unit": "袋"
+    },
+    {
+      "seq_num": 30,
+      "category": "易耗品",
+      "name": "气泡体",
+      "spec": "瓶",
+      "price": 20,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 31,
+      "category": "易耗品",
+      "name": "卡斯气",
+      "spec": "瓶",
+      "price": 8,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 32,
+      "category": "易耗品",
+      "name": "网盘",
+      "spec": "",
+      "price": 140,
+      "unit": "件"
+    },
+    {
+      "seq_num": 33,
+      "category": "易耗品",
+      "name": "线手套",
+      "spec": "双",
+      "price": 0.99,
+      "unit": "双"
+    },
+    {
+      "seq_num": 34,
+      "category": "易耗品",
+      "name": "饮料打包杯",
+      "spec": "",
+      "price": 0.5,
+      "unit": "个"
+    },
+    {
+      "seq_num": 35,
+      "category": "易耗品",
+      "name": "洗手液",
+      "spec": "",
+      "price": 20,
+      "unit": "斤"
+    },
+    {
+      "seq_num": 36,
+      "category": "易耗品",
+      "name": "蚊香",
+      "spec": "盒",
+      "price": 10,
+      "unit": "盒"
+    },
+    {
+      "seq_num": 37,
+      "category": "易耗品",
+      "name": "杀虫剂",
+      "spec": "瓶",
+      "price": 15,
+      "unit": "瓶"
+    },
+    {
+      "seq_num": 38,
+      "category": "易耗品",
+      "name": "片碱",
+      "spec": "斤",
+      "price": 3,
+      "unit": "斤"
+    }
+  ],
+  "产品卡": [
+    {
+      "seq_num": 1,
+      "category": "产品卡",
+      "name": "四方肥牛",
+      "spec": "300g铜版纸 10cm*8cm",
+      "price": 0.25,
+      "unit": "张"
+    },
+    {
+      "seq_num": 4,
+      "category": "产品卡",
+      "name": "山野重磅牛肋条",
+      "spec": "300g铜版纸 10cm*8cm",
+      "price": 0.25,
+      "unit": "张"
+    },
+    {
+      "seq_num": 5,
+      "category": "产品卡",
+      "name": "小菜",
+      "spec": "",
+      "price": 0.25,
+      "unit": "张"
+    },
+    {
+      "seq_num": 6,
+      "category": "产品卡",
+      "name": "延边米酒",
+      "spec": "",
+      "price": 0.25,
+      "unit": "张"
+    },
+    {
+      "seq_num": 7,
+      "category": "产品卡",
+      "name": "焦糖香蕉布丁",
+      "spec": "",
+      "price": 0.25,
+      "unit": "张"
+    },
+    {
+      "seq_num": 8,
+      "category": "产品卡",
+      "name": "千丝香草冰淇淋",
+      "spec": "",
+      "price": 0.25,
+      "unit": "张"
+    }
+  ],
+  "竹炭": [
+    {
+      "seq_num": 1,
+      "category": "易耗品",
+      "name": "酒精块",
+      "spec": "个",
+      "price": "50个/袋",
+      "unit": ""
+    },
+    {
+      "seq_num": 2,
+      "category": "易耗品",
+      "name": "高温竹炭",
+      "spec": "件",
+      "price": "30斤/件",
+      "unit": "86"
+    }
+  ]
+}

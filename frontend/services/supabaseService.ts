@@ -75,12 +75,12 @@ export interface UnitOfMeasure {
   dimension?: string;
 }
 
-// v3.6 - 物料分类
+// v4.3 - 物料分类（表名改为 ims_category）
 export interface Category {
   id: number;
   name: string;
   sort_order: number;
-  brand_code?: string | null;
+  brand_id?: number | null;
 }
 
 // v3.7 - 添加 use_ai_photo 和 use_ai_voice 字段，追踪 AI 功能使用情况
@@ -166,14 +166,14 @@ export function injectBrandsCache(brands: Brand[]): void {
  */
 export async function getCategories(brandId?: number): Promise<Category[]> {
   let query = supabase
-    .from('ims_ref_category')
-    .select('id, name, sort_order, brand_code')
+    .from('ims_category')
+    .select('id, name, sort_order, brand_id')
     .eq('is_active', true)
     .eq('category_type', 'material');
 
-  // 品牌过滤：加载本品牌 + 通用(id=3) 分类
+  // 品牌过滤：加载本品牌 + 通用(NULL或id=3) 分类
   if (brandId) {
-    query = query.or(`brand_id.eq.${brandId},brand_id.eq.3`);
+    query = query.or(`brand_id.eq.${brandId},brand_id.eq.3,brand_id.is.null`);
   }
 
   const { data, error } = await query.order('sort_order');
