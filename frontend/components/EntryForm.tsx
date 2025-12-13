@@ -1400,9 +1400,11 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
   // v5.1: 支持相册多选批量上传
   const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('[图片上传] 触发收货单上传');
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
 
+    // v5.1: 先复制文件列表，再清空 input（避免清空后 FileList 被释放）
+    const files = Array.from(fileList);
     e.target.value = '';
     console.log(`[图片上传] 收货单文件数量: ${files.length}`);
     setIsAnalyzing(true);
@@ -1500,9 +1502,11 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
   // v5.1: 支持相册多选批量上传
   const handleGoodsImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('[图片上传] 触发货物上传');
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
 
+    // v5.1: 先复制文件列表，再清空 input（避免清空后 FileList 被释放）
+    const files = Array.from(fileList);
     e.target.value = '';
     console.log(`[图片上传] 货物文件数量: ${files.length}`);
     setIsAnalyzing(true);
