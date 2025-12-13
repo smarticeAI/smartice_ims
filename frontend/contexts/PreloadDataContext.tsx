@@ -1,5 +1,6 @@
 /**
  * PreloadDataContext - 数据预加载上下文
+ * v1.5 - 品牌从数据库动态加载，先加载品牌再加载其他数据（供应商过滤依赖品牌映射）
  * v1.4 - 添加分类预加载，从数据库读取分类数据
  *
  * 功能：
@@ -7,6 +8,7 @@
  * - 不阻塞页面渲染，用户可立即使用
  * - 使用 ref 防止重复加载
  * - 与 supabaseService.ts 共享缓存机制
+ * - v1.5: 先加载品牌数据，构建 code→id 映射，供应商过滤依赖此映射
  * - v1.4: 新增分类预加载，支持品牌过滤
  * - v1.3: 供应商也根据用户 brand_code 过滤
  * - v1.2: 根据用户 brand_code 加载对应品牌的物料
@@ -19,10 +21,12 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import {
+  getBrands,
   getSuppliers,
   getProducts,
   getAllUnits,
   getCategories,
+  injectBrandsCache,
   injectSuppliersCache,
   injectProductsCache,
   injectUnitsCache,
@@ -85,7 +89,14 @@ export const PreloadDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setError(null);
 
     try {
-      // 并行加载所有数据
+      // v1.5: 先加载品牌数据（供应商过滤依赖 brandCodeToId 映射）
+      const brandsData = await getBrands().catch(err => {
+        console.error('[PreloadData] 加载品牌失败:', err);
+        return [];
+      });
+      injectBrandsCache(brandsData);
+
+      // 并行加载其他数据
       // v1.4: 分类、产品、供应商都传入品牌代码进行过滤
       const [suppliersData, productsData, unitsData, categoriesData] = await Promise.all([
         getSuppliers(brandCode).catch(err => {
@@ -119,6 +130,7 @@ export const PreloadDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
       injectCategoriesCache(categoriesData);
 
       console.log('[PreloadData] 预加载完成:', {
+        brands: brandsData.length,
         suppliers: suppliersData.length,
         products: productsData.length,
         units: unitsData.length,

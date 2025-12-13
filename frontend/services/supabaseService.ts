@@ -1,5 +1,6 @@
 /**
  * Supabase 数据库服务
+ * v4.2 - 添加 getBrands() 从数据库读取品牌，动态构建 code→id 映射，移除硬编码
  * v4.1 - getSuppliers 接受 brandCode 字符串参数，内部转换为 brand_id
  * v4.0 - 供应商表重命名 ims_ref_supplier → ims_supplier，品牌字段改为 brand_id 外键
  * v3.8 - 添加物料别名(aliases)支持，实现模糊匹配（如西红柿→番茄）
@@ -9,6 +10,7 @@
  * v3.4 - 添加 brandCode 品牌过滤，支持按品牌加载物料
  *
  * 变更历史：
+ * - v4.2: 新增 getBrands()、brandCodeToId()、injectBrandsCache()，移除硬编码映射
  * - v4.1: getSuppliers() 参数改为 brandCode 字符串，内部自动转换为 brand_id
  * - v4.0: 供应商表重命名，brand_code → brand_id 外键，createOrGetSupplier 支持 brandId
  * - v3.8: Product 接口新增 aliases 字段，exactMatchProduct/searchProducts 支持别名匹配
@@ -108,6 +110,77 @@ export interface StorePurchasePrice {
   use_ai_voice?: number;      // v3.7: 语音识别功能使用次数
 }
 
+// ============ 品牌 API ============
+// v4.2 - 从数据库读取品牌列表，动态构建 code → id 映射
+
+export interface Brand {
+  id: number;
+  code: string;
+  name: string;
+  name_en?: string;
+  description?: string;
+  is_active: boolean;
+}
+
+// 品牌缓存（启动时加载）
+let brandsCache: Brand[] | null = null;
+let brandCodeToIdMap: Map<string, number> | null = null;
+
+/**
+ * 获取品牌列表
+ * v4.2 - 从数据库读取品牌，用于动态映射
+ */
+export async function getBrands(): Promise<Brand[]> {
+  if (brandsCache) {
+    return brandsCache;
+  }
+
+  const { data, error } = await supabase
+    .from('ims_brand')
+    .select('id, code, name, name_en, description, is_active')
+    .eq('is_active', true)
+    .order('id');
+
+  if (error) {
+    console.error('获取品牌列表失败:', error);
+    throw error;
+  }
+
+  brandsCache = data || [];
+
+  // 构建 code → id 映射
+  brandCodeToIdMap = new Map();
+  for (const brand of brandsCache) {
+    brandCodeToIdMap.set(brand.code, brand.id);
+  }
+  console.log('[SupabaseService] 品牌缓存已加载:', brandsCache.length, '个品牌');
+
+  return brandsCache;
+}
+
+/**
+ * 根据品牌代码获取品牌ID（从缓存）
+ * v4.2 - 动态查找，不再硬编码
+ * @param brandCode 品牌代码 (如 YBL, NGX, COMMON)
+ * @returns 品牌ID，未找到返回 undefined
+ */
+export function brandCodeToId(brandCode?: string): number | undefined {
+  if (!brandCode || !brandCodeToIdMap) return undefined;
+  return brandCodeToIdMap.get(brandCode);
+}
+
+/**
+ * 注入品牌缓存（用于 PreloadDataContext 预加载后同步）
+ */
+export function injectBrandsCache(brands: Brand[]): void {
+  brandsCache = brands;
+  brandCodeToIdMap = new Map();
+  for (const brand of brands) {
+    brandCodeToIdMap.set(brand.code, brand.id);
+  }
+  console.log('[SupabaseService] 注入品牌缓存:', brands.length, '条');
+}
+
 // ============ 分类 API ============
 // v3.6 - 从数据库读取物料分类
 
@@ -140,28 +213,11 @@ export async function getCategories(brandCode?: string): Promise<Category[]> {
 
 // ============ 供应商 API ============
 // v4.0 - 使用 ims_supplier 表，brand_id 外键
-// v4.1 - getSuppliers 接受 brandCode 字符串参数，内部转换为 brand_id
-
-// 品牌代码到品牌ID的映射（与 ims_brand 表对应）
-const BRAND_CODE_TO_ID: Record<string, number> = {
-  'YBL': 1,    // 野百灵
-  'NGX': 2,    // 宁桂杏
-  'COMMON': 3, // 通用
-};
-
-/**
- * 将品牌代码转换为品牌ID
- * @param brandCode 品牌代码 (YBL/NGX/COMMON)
- * @returns 品牌ID，无效代码返回 undefined
- */
-function brandCodeToId(brandCode?: string): number | undefined {
-  if (!brandCode) return undefined;
-  return BRAND_CODE_TO_ID[brandCode];
-}
+// v4.2 - 移除硬编码映射，使用动态 brandCodeToId()
 
 /**
  * 获取供应商列表（按品牌过滤）
- * v4.1 - 接受 brandCode 字符串参数，内部转换为 brand_id
+ * v4.2 - 使用动态 brandCodeToId() 转换品牌代码
  * @param brandCode 可选品牌代码 (YBL/NGX/COMMON)
  */
 export async function getSuppliers(brandCode?: string): Promise<Supplier[]> {

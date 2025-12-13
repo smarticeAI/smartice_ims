@@ -1,9 +1,11 @@
 /**
  * 入库数据提交服务
+ * v4.1 - 使用 supabaseService 导出的 brandCodeToId()，移除本地硬编码映射
  * v4.0 - 新建供应商时绑定品牌ID，支持 brandCode 参数转换为 brand_id
  * v3.9 - 产品匹配支持别名（如西红柿→番茄），使用 exactMatchProduct RPC
  *
  * 变更历史：
+ * - v4.1: 移除本地硬编码映射，使用 supabaseService.brandCodeToId()
  * - v4.0: 新建供应商绑定品牌，添加 brandCode 参数和品牌映射
  * - v3.9: 产品匹配改用 exactMatchProduct，支持别名匹配
  * - v3.8: goodsImages 改为数组，支持批量上传多张货物图片
@@ -26,6 +28,7 @@ import {
   matchSupplier,
   createOrGetSupplier,
   createPurchasePrices,
+  brandCodeToId,  // v4.1: 从 supabaseService 导入动态映射函数
   StorePurchasePrice,
   Product,
 } from './supabaseService';
@@ -55,25 +58,6 @@ export type SubmitProgress =
   | 'success';            // 提交成功
 
 export type OnProgressCallback = (progress: SubmitProgress) => void;
-
-// ============ 品牌代码映射 ============
-// v4.0 - 品牌代码到品牌ID的映射（与数据库 ims_brand 表对应）
-
-const BRAND_CODE_TO_ID: Record<string, number> = {
-  'YBL': 1,    // 野百灵
-  'NGX': 2,    // 宁桂杏
-  'COMMON': 3, // 通用
-};
-
-/**
- * 将品牌代码转换为品牌ID
- * @param brandCode 品牌代码 (YBL/NGX/COMMON)
- * @returns 品牌ID，默认返回 3（通用）
- */
-function brandCodeToId(brandCode?: string | null): number {
-  if (!brandCode) return 3;  // 默认通用
-  return BRAND_CODE_TO_ID[brandCode] || 3;
-}
 
 // ============ 主提交函数 ============
 
@@ -209,9 +193,9 @@ export async function submitProcurement(
       supplierName = dailyLog.supplier;
     }
   } else if (dailyLog.supplierOther) {
-    // v4.0: "其他"供应商 - 自动创建到数据库，绑定当前品牌
+    // v4.1: "其他"供应商 - 自动创建到数据库，绑定当前品牌（默认通用=3）
     try {
-      const brandId = brandCodeToId(brandCode);
+      const brandId = brandCodeToId(brandCode) ?? 3;  // 未找到映射时默认为通用
       const newSupplier = await createOrGetSupplier(dailyLog.supplierOther, brandId);
       supplierId = newSupplier.id;
       supplierName = newSupplier.name;
