@@ -20,8 +20,8 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = ({
       className={clsx(
         'fixed top-0 left-0 right-0 z-50',
         'flex items-center justify-center gap-3 px-4 py-3',
-        // Storm Glass 深色毛玻璃背景
-        'bg-[rgba(25,25,30,0.75)] backdrop-blur-[40px] backdrop-saturate-[140%]',
+        // Storm Glass 深色毛玻璃背景（85% 不透明度确保文字清晰）
+        'bg-[rgba(25,25,30,0.85)] backdrop-blur-[40px] backdrop-saturate-[140%]',
         // 白色高光边框（底部）
         'border-b border-white/15',
         'text-white text-sm',
