@@ -1,28 +1,17 @@
 /**
  * Supabase 数据库服务
+ * v4.4 - 表名规范化：移除 ref 前缀（ims_ref_unit → ims_unit）
  * v4.3 - 全面使用 brand_id 外键，移除 brandCode 字符串和 code→id 映射
- * v4.2 - 添加 getBrands() 从数据库读取品牌
- * v4.0 - 供应商表重命名 ims_ref_supplier → ims_supplier，品牌字段改为 brand_id 外键
- * v3.8 - 添加物料别名(aliases)支持，实现模糊匹配（如西红柿→番茄）
- * v3.7 - 添加 use_ai_photo 和 use_ai_voice 字段，追踪 AI 功能使用情况
- * v3.6 - 添加分类API，getCategories() 从数据库读取分类
+ * v4.0 - 供应商表重命名 ims_ref_supplier → ims_supplier
  *
  * 变更历史：
+ * - v4.4: 单位表重命名 ims_ref_unit → ims_unit
  * - v4.3: 移除 brandCodeToId 映射，所有 API 直接使用 brand_id 数字参数
  * - v4.2: 新增 getBrands()、injectBrandsCache()
- * - v4.0: 供应商表重命名，brand_code → brand_id 外键，createOrGetSupplier 支持 brandId
- * - v3.8: Product 接口新增 aliases 字段，exactMatchProduct/searchProducts 支持别名匹配
- * - v3.7: createPurchasePrices 支持 use_ai_photo/use_ai_voice 字段写入
- * - v3.6: 新增 getCategories() 从数据库读取物料分类，支持品牌过滤
- * - v3.5: getSuppliers() 支持 brandId 参数，用于按品牌过滤供应商
- * - v3.3: 添加删除采购记录功能
- * - v3.2: 与 PreloadDataContext 共享缓存，支持应用启动时预加载数据
- * - v3.1: 新增 getAllProducts、getAllSuppliers 用于下拉列表展示全部选项
- * - v3.0: 简化 ims_material_price 表，移除 SKU，改为直接关联 material
- * - v2.3: 新增 searchUnits 函数用于单位自动完成输入
- * - v2.2: 更新表名映射（ims_product→ims_material, ims_unit_of_measure→ims_ref_unit等）
- * - v2.1: 添加 total_amount 字段支持采购总价
- * - v2.0: 使用 supabaseClient.ts 提供的单例客户端
+ * - v4.0: 供应商表重命名，brand_code → brand_id 外键
+ * - v3.8: Product 接口新增 aliases 字段，支持别名匹配
+ * - v3.7: createPurchasePrices 支持 use_ai_photo/use_ai_voice 字段
+ * - v3.6: 新增 getCategories() 从数据库读取物料分类
  */
 
 import { supabase } from './supabaseClient';
@@ -375,14 +364,14 @@ export async function getProductSkus(materialId: number): Promise<ProductSku[]> 
 }
 
 // ============ 单位 API ============
-// v2.2 - 使用 ims_ref_unit 表
+// v4.4 - 表名改为 ims_unit（移除 ref 前缀）
 
 /**
  * 获取计量单位列表
  */
 export async function getUnits(): Promise<UnitOfMeasure[]> {
   const { data, error } = await supabase
-    .from('ims_ref_unit')
+    .from('ims_unit')
     .select('*')
     .eq('is_active', true)
     .order('unit_type');
@@ -397,11 +386,11 @@ export async function getUnits(): Promise<UnitOfMeasure[]> {
 
 /**
  * 获取所有单位列表（用于下拉选择）
- * v2.2 - 使用 ims_ref_unit 表
+ * v4.4 - 表名改为 ims_unit
  */
 export async function getAllUnits(): Promise<Array<{id: number, code: string, name: string}>> {
   const { data, error } = await supabase
-    .from('ims_ref_unit')
+    .from('ims_unit')
     .select('id, code, name_cn')
     .eq('is_active', true)
     .order('name_cn');
@@ -420,12 +409,12 @@ export async function getAllUnits(): Promise<Array<{id: number, code: string, na
 
 /**
  * 匹配单位
- * v2.2 - 使用 ims_ref_unit 表
+ * v4.4 - 表名改为 ims_unit
  */
 export async function matchUnit(unitName: string): Promise<UnitOfMeasure | null> {
   // 直接精确匹配或模糊匹配
   const { data } = await supabase
-    .from('ims_ref_unit')
+    .from('ims_unit')
     .select('*')
     .or(`code.eq.${unitName},name_cn.eq.${unitName}`)
     .eq('is_active', true)
