@@ -1,10 +1,10 @@
 {
-  "name": "smartice-inventory",
+  "name": "smartice-inventory-entry",
   "version": "1.0.0",
-  "description": "SmartICE 库存数据录入工具 - 支持野百灵和宁桂杏品牌的物料/供应商管理",
+  "description": "SmartICE库存数据库工具 - 支持有点东西旗下各品牌的数据库管理",
   "author": {
-    "name": "SmartICE",
-    "email": "dev@smartice.ai"
+    "name": "Jeremy",
+    "email": "hengd2@outlook.com"
   },
   "keywords": ["inventory", "material", "supplier", "野百灵", "宁桂杏"]
 }

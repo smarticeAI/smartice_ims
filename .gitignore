@@ -31,3 +31,6 @@ npm-debug.log*
 # Cache
 .vite/
 .cache/
+
+# Supabase CLI temp files
+supabase/.temp/

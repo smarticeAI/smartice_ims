@@ -1,0 +1,20 @@
+# Cloudflare Pages 缓存控制
+# v1.0 - 解决 Safari/iPhone 缓存导致收不到版本更新提示的问题
+
+# HTML 入口文件 - 禁止缓存，每次从服务器获取
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+# 版本检测文件 - 禁止缓存
+/version.json
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+# 静态资源（带 hash）- 长期缓存
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
