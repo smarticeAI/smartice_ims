@@ -1,8 +1,9 @@
 /**
  * 自动完成输入框组件
- * v3.2 - inline 变体添加边框样式，与其他输入框保持一致
+ * v3.3 - 新增 strictSelection 严格选择模式，强制用户只能从列表选择
  *
  * 变更历史：
+ * - v3.3: 新增 strictSelection 属性，启用时用户只能从下拉列表选择值
  * - v3.2: inline 变体输入框容器添加边框样式（bg-cacao-husk/60 + 棕色边框）
  * - v3.1: 使用 createPortal 将下拉框渲染到 body，避免被 GlassCard 遮挡
  * - v3.0: 新增 showDropdownButton 倒三角按钮，点击可展开下拉列表
@@ -60,6 +61,8 @@ export interface AutocompleteInputProps {
   showDropdownButton?: boolean;
   /** v3.0: 获取全部选项的函数（用于下拉按钮点击） */
   getAllOptionsFn?: () => Promise<AutocompleteOption[]>;
+  /** v3.3: 严格选择模式 - 只能从下拉列表选择，不允许自由输入 */
+  strictSelection?: boolean;
 }
 
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
@@ -79,6 +82,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   extraOptions = [],
   showDropdownButton = false,
   getAllOptionsFn,
+  strictSelection = false,
 }) => {
   // 内部状态
   const [isOpen, setIsOpen] = useState(false);
@@ -87,6 +91,10 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   // v3.1: 下拉框位置（用于 Portal 定位）
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  // v3.3: 严格模式下，记录最后一次有效选择的值
+  const [lastValidValue, setLastValidValue] = useState(value);
+  // v3.3: 追踪是否通过选择方式设置了值
+  const isValueFromSelection = useRef(false);
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -166,8 +174,12 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   // 选择选项
   const selectOption = useCallback(
     (option: AutocompleteOption) => {
+      // v3.3: 标记值来自选择
+      isValueFromSelection.current = true;
       onChange(option.value);
       onSelect?.(option);
+      // v3.3: 更新最后有效值
+      setLastValidValue(option.value);
       setIsOpen(false);
       setHighlightedIndex(-1);
       inputRef.current?.focus();
@@ -249,14 +261,44 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     };
   }, []);
 
+  // v3.3: 当外部通过 props 清空 value 时（如点击清除按钮），同步更新 lastValidValue
+  useEffect(() => {
+    if (value === '' && lastValidValue !== '') {
+      setLastValidValue('');
+    }
+  }, [value, lastValidValue]);
+
   // 聚焦时显示缓存选项
   const handleFocus = useCallback(() => {
+    // v3.3: 聚焦时重置选择标记
+    isValueFromSelection.current = false;
     if (value.length >= minChars && options.length > 0) {
       setIsOpen(true);
     }
   }, [value, minChars, options.length]);
 
+  // v3.3: 失去焦点时，如果是严格模式且值不是通过选择获得的，恢复到最后有效值
+  // 使用延迟执行避免与点击下拉选项的竞态条件
+  const handleBlur = useCallback(() => {
+    setTimeout(() => {
+      if (strictSelection && !isValueFromSelection.current) {
+        // 如果当前值不等于最后有效值，则恢复
+        if (value !== lastValidValue) {
+          onChange(lastValidValue);
+        }
+      }
+      // 重置选择标记
+      isValueFromSelection.current = false;
+    }, 150);  // 150ms 延迟，确保 click 事件先处理
+  }, [strictSelection, value, lastValidValue, onChange]);
+
   // v3.0: 下拉按钮点击 - 展开全部选项
+  // v3.3: 使用 onMouseDown 阻止 blur 事件触发恢复逻辑
+  const handleDropdownMouseDown = useCallback((e: React.MouseEvent) => {
+    // 阻止默认行为，防止输入框失去焦点
+    e.preventDefault();
+  }, []);
+
   const handleDropdownClick = useCallback(async () => {
     if (isOpen) {
       setIsOpen(false);
@@ -308,6 +350,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder={placeholder}
           disabled={disabled}
           className={clsx(
@@ -324,6 +367,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         {showDropdownButton && variant === 'default' && (
           <button
             type="button"
+            onMouseDown={handleDropdownMouseDown}
             onClick={handleDropdownClick}
             disabled={disabled}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors disabled:opacity-40"
@@ -350,6 +394,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         {showDropdownButton && variant === 'inline' && (
           <button
             type="button"
+            onMouseDown={handleDropdownMouseDown}
             onClick={handleDropdownClick}
             disabled={disabled}
             className="ml-1 w-5 h-5 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors disabled:opacity-40"
@@ -413,6 +458,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                 <button
                   key={option.id}
                   type="button"
+                  onMouseDown={handleDropdownMouseDown}
                   onClick={() => selectOption(option)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={clsx(

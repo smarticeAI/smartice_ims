@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v5.3 - 供应商选择启用严格模式，防止用户绕过"其他"选项直接输入新供应商
 // v5.2 - 使用 brand_id 外键替代 brand_code 字符串
 // v5.0 - 员工餐分类特殊处理：固定物料/单位，禁用AI识别/语音，只允许单条
 // v4.8 - 收货单照片添加"需为同一供货商"提示 + 供应商/备注增加一键清除按钮
@@ -548,6 +549,7 @@ const WorksheetScreen: React.FC<{
                 extraOptions={[{ id: 'other', label: '其他', value: '其他', sublabel: '手动输入供应商' }]}
                 showDropdownButton={true}
                 getAllOptionsFn={getAllSuppliersAsOptions}
+                strictSelection={true}
               />
             )}
           </div>
