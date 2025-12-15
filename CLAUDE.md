@@ -13,7 +13,7 @@
 | **前端** | React 19 + Vite 6 | TypeScript, Tailwind CSS v4 |
 | **后端** | FastAPI + Python 3.11 | 语音录入 WebSocket 服务 |
 | **数据库** | Supabase PostgreSQL | 业务数据 + 用户表 |
-| **认证** | 自建 ims_users 表 | 用户名/密码登录（明文，内部项目） |
+| **认证** | master_employee 表 | 用户名/密码登录（共享主表，跨项目） |
 | **语音识别** | 讯飞 ASR | WebSocket 实时流式 |
 | **AI 结构化** | 阿里云 Qwen | 语音文本 → JSON |
 
@@ -54,41 +54,50 @@ InventoryEntryOfSmartICE/
 
 ## Supabase 数据库表结构
 
-### 用户认证（简化方案）
+### 共享主表（master_* 跨项目共用）
 
 | 表名 | 说明 |
 |------|------|
-| `ims_users` | 用户表（用户名、密码、姓名、角色、门店） |
-| `ims_stores` | 门店表（兼容旧版，实际使用 `ims_ref_store`） |
+| `master_employee` | 员工表（用户名、密码哈希、姓名、角色、餐厅） |
+| `master_restaurant` | 餐厅表（餐厅名、品牌ID、地址） |
+| `master_brand` | 品牌表（品牌代码、名称） |
+| `master_role` | 角色表 |
 
 **用户角色**：`super_admin` / `store_manager` / `chef` / `employee`
 
-**登录方式**：前端直接查询 `ims_users` 表验证用户名+密码，会话存 localStorage
+**登录方式**：前端查询 `master_employee` 表验证用户名+密码，会话存 localStorage
 
-**测试账号**：
-| 用户名 | 密码 | 角色 |
-|--------|------|------|
-| `admin` | `admin123` | 超级管理员 |
-| `manager` | `manager123` | 店长 |
-| `employee` | `employee123` | 员工 |
+**master_employee 主要字段**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | uuid | 主键 |
+| `username` | varchar | 用户名 |
+| `password_hash` | varchar | 密码（明文存储，内部项目） |
+| `employee_name` | varchar | 员工姓名 |
+| `phone` | varchar | 手机号 |
+| `restaurant_id` | uuid | 所属餐厅（外键） |
+| `role_code` | varchar | 角色代码 |
+| `is_active` | boolean | 是否启用 |
+| `is_locked` | boolean | 是否锁定（登录失败5次） |
+| `login_failed_count` | integer | 登录失败次数 |
 
 **添加新用户**：
 ```sql
-INSERT INTO ims_users (username, password, name, role, store_id)
-VALUES ('zhangsan', '123456', '张三', 'chef', 'store-uuid');
+INSERT INTO master_employee (username, password_hash, employee_name, role_code, restaurant_id)
+VALUES ('zhangsan', '123456', '张三', 'chef', 'restaurant-uuid');
 ```
 
-### 业务数据表
+### 业务数据表（ims_* 本项目专用）
 
 | 表名 | 说明 |
 |------|------|
-| `ims_ref_supplier` | 供应商表 |
+| `ims_supplier` | 供应商表 |
 | `ims_material` | 物料/产品表 |
 | `ims_material_sku` | 物料 SKU 表 |
-| `ims_ref_unit` | 计量单位表 |
-| `ims_material_price` | 采购价格记录表 |
-| `ims_ref_store` | 门店表 |
-| `ims_ref_category` | 分类表 |
+| `ims_unit` | 计量单位表 |
+| `ims_material_price` | 采购价格记录表（restaurant_id 关联餐厅） |
+| `ims_category` | 分类表 |
+| `ims_brand` | 品牌表（本地副本） |
 
 ### Storage Bucket
 
@@ -176,8 +185,9 @@ CORS_ORIGINS=https://inv.smartice.ai
    ┌──────────────┐      ┌──────────────┐
    │   Supabase   │      │ Render (后端) │
    │  PostgreSQL  │      │  WebSocket   │
-   │  ims_users   │      │ 语音录入服务   │
-   └──────────────┘      └──────────────┘
+   │ master_*     │      │ 语音录入服务   │
+   │ ims_*        │      └──────────────┘
+   └──────────────┘
 ```
 
 ---

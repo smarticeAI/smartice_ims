@@ -59,9 +59,9 @@ const DATE_FILTER_OPTIONS: { value: DateFilterType; label: string }[] = [
 ];
 
 export const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ onBack }) => {
-  // 获取当前用户的门店ID
+  // 获取当前用户的餐厅ID
   const { user } = useAuth();
-  const storeId = user?.store_id || undefined;
+  const storeId = user?.restaurant_id || undefined;
 
   // 本地队列状态
   const [queue, setQueue] = useState<QueueItem[]>([]);

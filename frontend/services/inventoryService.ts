@@ -244,9 +244,10 @@ export async function submitProcurement(
     }
 
     // 构建记录
+    // v5.0: restaurant_id 替代 store_id
     // v3.7: 添加 AI 使用统计字段
     const record: StorePurchasePrice = {
-      store_id: storeId,
+      restaurant_id: storeId,
       created_by: employeeId,
       material_id: materialId,
       supplier_id: supplierId || undefined,

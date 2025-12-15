@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v5.5 - "其他"供应商名称保护：禁止输入保留字（其他/员工餐）或已存在的供应商名
 // v5.4 - AI 识别失败时展示智能提示（如"这不是收货单"），提升用户体验
 // v5.3 - 供应商选择启用严格模式，防止用户绕过"其他"选项直接输入新供应商
 // v5.2 - 使用 brand_id 外键替代 brand_code 字符串
@@ -1124,7 +1125,8 @@ const SummaryScreen: React.FC<{
 
 export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNickname, onOpenMenu }) => {
   // v4.4: 从预加载数据获取分类
-  const { categories } = usePreloadData();
+  // v5.5: 新增 suppliers 用于验证"其他"供应商名称是否重复
+  const { categories, suppliers } = usePreloadData();
 
   const [step, setStep] = useState<EntryStep>('WELCOME');
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('');
@@ -1615,6 +1617,33 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
     if (!supplier || supplier.trim() === '') {
         alert('请选择或输入供应商（必填）');
         return;
+    }
+
+    // v5.5: "其他"供应商名称保护 - 防止输入保留字或已存在的供应商
+    if (supplier === '其他') {
+        const trimmedOther = supplierOther.trim();
+
+        // 2a. 必须输入供应商名称
+        if (!trimmedOther) {
+            alert('请输入新供应商名称');
+            return;
+        }
+
+        // 2b. 保留字检查
+        const reservedNames = ['其他', '其它', '员工餐'];
+        if (reservedNames.includes(trimmedOther)) {
+            alert(`"${trimmedOther}" 是系统保留名称，请输入真实的供应商名称`);
+            return;
+        }
+
+        // 2c. 已存在供应商检查（从预加载数据中获取）
+        const existingSupplier = suppliers.find(
+            s => s.name.toLowerCase() === trimmedOther.toLowerCase()
+        );
+        if (existingSupplier) {
+            alert(`供应商 "${trimmedOther}" 已存在，请返回从列表中选择`);
+            return;
+        }
     }
 
     // 3. 检查是否有物品

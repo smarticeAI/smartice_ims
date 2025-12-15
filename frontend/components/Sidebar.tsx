@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const userInitials = getAvatarChar();
   const userName = user?.name || '用户';
-  const storeName = user?.store_name || '未分配门店';
+  const storeName = user?.restaurant_name || '未分配门店';
 
   // 用户菜单组件（复用于移动端和桌面端）
   // v2.2 - 添加 z-index 和 stopPropagation 修复点击问题

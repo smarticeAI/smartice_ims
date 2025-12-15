@@ -184,7 +184,7 @@ export const PreloadDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
       console.log('[PreloadData] 用户已登录，准备加载数据:', {
         userId: user.id,
         userName: user.name,
-        storeId: user.store_id,
+        restaurantId: user.restaurant_id,
         brandId: user.brand_id,
       });
       loadData(user.brand_id);

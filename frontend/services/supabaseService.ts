@@ -1,10 +1,14 @@
 /**
  * Supabase 数据库服务
+ * v5.1 - 修复 406 错误：.single() → .maybeSingle()，避免 0 行时抛出异常
+ * v5.0 - 迁移到 master tables: ims_brand → master_brand, store_id → restaurant_id
  * v4.4 - 表名规范化：移除 ref 前缀（ims_ref_unit → ims_unit）
  * v4.3 - 全面使用 brand_id 外键，移除 brandCode 字符串和 code→id 映射
  * v4.0 - 供应商表重命名 ims_ref_supplier → ims_supplier
  *
  * 变更历史：
+ * - v5.1: 修复 406 错误：createOrGetSupplier/matchSupplier/matchUnit 使用 maybeSingle()
+ * - v5.0: 迁移到 master tables，使用 master_brand, restaurant_id 替代 store_id
  * - v4.4: 单位表重命名 ims_ref_unit → ims_unit
  * - v4.3: 移除 brandCodeToId 映射，所有 API 直接使用 brand_id 数字参数
  * - v4.2: 新增 getBrands()、injectBrandsCache()
@@ -72,11 +76,12 @@ export interface Category {
   brand_id?: number | null;
 }
 
+// v5.0 - store_id → restaurant_id (UUID)
 // v3.7 - 添加 use_ai_photo 和 use_ai_voice 字段，追踪 AI 功能使用情况
 // v3.6 - 添加 specification 字段，与 notes 分开存储
 export interface StorePurchasePrice {
   id?: number;
-  store_id: string;           // UUID - 门店
+  restaurant_id: string;      // v5.0: UUID - 餐厅 (原 store_id)
   created_by: string;         // UUID - 录入人
   material_id?: number;       // 关联 ims_material（可为空）
   supplier_id?: number;       // 关联 ims_supplier（可为空）
@@ -113,6 +118,7 @@ let brandsCache: Brand[] | null = null;
 
 /**
  * 获取品牌列表
+ * v5.0 - 使用 master_brand 表
  * v4.3 - 仅用于显示，不再构建 code→id 映射
  */
 export async function getBrands(): Promise<Brand[]> {
@@ -121,7 +127,7 @@ export async function getBrands(): Promise<Brand[]> {
   }
 
   const { data, error } = await supabase
-    .from('ims_brand')
+    .from('master_brand')
     .select('id, code, name, name_en, description, is_active')
     .eq('is_active', true)
     .order('id');
@@ -206,16 +212,18 @@ export async function getSuppliers(brandId?: number): Promise<Supplier[]> {
 
 /**
  * 模糊匹配供应商
+ * v5.1 - 使用 maybeSingle() 替代 single()，避免 0 行时抛出 406 错误
  * v4.0 - 使用 ims_supplier 表
  */
 export async function matchSupplier(name: string): Promise<Supplier | null> {
   // 先精确匹配
+  // v5.1: 使用 maybeSingle() 替代 single()，避免 0 行时抛出 406 错误
   const { data: exactMatch } = await supabase
     .from('ims_supplier')
     .select('*')
     .eq('name', name)
     .eq('is_active', true)
-    .single();
+    .maybeSingle();
 
   if (exactMatch) {
     return exactMatch;
@@ -243,11 +251,12 @@ export async function createOrGetSupplier(name: string, brandId: number = 3): Pr
   const trimmedName = name.trim();
 
   // 先检查是否已存在（同名同品牌）
+  // v5.1: 使用 maybeSingle() 替代 single()，避免 0 行时抛出 406 错误
   const { data: existing } = await supabase
     .from('ims_supplier')
     .select('*')
     .eq('name', trimmedName)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     console.log(`[供应商] 已存在: ${trimmedName} (ID: ${existing.id}, brand_id: ${existing.brand_id})`);
@@ -409,16 +418,18 @@ export async function getAllUnits(): Promise<Array<{id: number, code: string, na
 
 /**
  * 匹配单位
+ * v5.1 - 使用 maybeSingle() 替代 single()，避免 0 行时抛出 406 错误
  * v4.4 - 表名改为 ims_unit
  */
 export async function matchUnit(unitName: string): Promise<UnitOfMeasure | null> {
   // 直接精确匹配或模糊匹配
+  // v5.1: 使用 maybeSingle() 替代 single()，避免 0 行时抛出 406 错误
   const { data } = await supabase
     .from('ims_unit')
     .select('*')
     .or(`code.eq.${unitName},name_cn.eq.${unitName}`)
     .eq('is_active', true)
-    .single();
+    .maybeSingle();
 
   return data;
 }
@@ -428,13 +439,14 @@ export async function matchUnit(unitName: string): Promise<UnitOfMeasure | null>
 
 /**
  * 创建采购价格记录
+ * v5.0 - 使用 restaurant_id 替代 store_id
  * v3.7 - 支持 use_ai_photo/use_ai_voice 字段
  */
 export async function createPurchasePrice(data: StorePurchasePrice): Promise<StorePurchasePrice> {
   const { data: result, error } = await supabase
     .from('ims_material_price')
     .insert({
-      store_id: data.store_id,
+      restaurant_id: data.restaurant_id,
       created_by: data.created_by,
       material_id: data.material_id || null,
       supplier_id: data.supplier_id || null,
@@ -466,13 +478,14 @@ export async function createPurchasePrice(data: StorePurchasePrice): Promise<Sto
 
 /**
  * 批量创建采购价格记录
+ * v5.0 - 使用 restaurant_id 替代 store_id
  * v3.7 - 支持 use_ai_photo/use_ai_voice 字段
  */
 export async function createPurchasePrices(records: StorePurchasePrice[]): Promise<StorePurchasePrice[]> {
   const { data: results, error } = await supabase
     .from('ims_material_price')
     .insert(records.map(r => ({
-      store_id: r.store_id,
+      restaurant_id: r.restaurant_id,
       created_by: r.created_by,
       material_id: r.material_id || null,
       supplier_id: r.supplier_id || null,
@@ -761,10 +774,11 @@ export type DateFilterType = 'today' | 'week' | 'month' | 'all';
 
 /**
  * 获取采购历史记录（分页）
+ * v5.0: restaurantId 替代 storeId
  * v4.5: 添加日期范围筛选
  * @param page 页码（从0开始）
  * @param pageSize 每页数量
- * @param storeId 可选门店ID过滤
+ * @param restaurantId 可选餐厅ID过滤
  * @param dateFilter 日期筛选类型
  * @returns 历史记录列表
  */
@@ -772,21 +786,21 @@ export type DateFilterType = 'today' | 'week' | 'month' | 'all';
 export async function getProcurementHistory(
   page: number = 0,
   pageSize: number = 20,
-  storeId?: string,
+  restaurantId?: string,
   dateFilter: DateFilterType = 'today'
 ): Promise<{ data: ProcurementHistoryItem[]; hasMore: boolean; total: number }> {
   const from = page * pageSize;
   const to = from + pageSize - 1;
 
-  // v5.0: 使用关联查询获取供应商名称
+  // v5.0: 使用关联查询获取供应商名称，使用 restaurant_id
   let query = supabase
     .from('ims_material_price')
     .select('*, ims_supplier(name)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  if (storeId) {
-    query = query.eq('store_id', storeId);
+  if (restaurantId) {
+    query = query.eq('restaurant_id', restaurantId);
   }
 
   // v4.5: 根据筛选类型添加日期条件
@@ -817,7 +831,7 @@ export async function getProcurementHistory(
   const { data, error, count } = await query;
 
   // DEBUG: 打印筛选条件和结果
-  console.log('[getProcurementHistory] 筛选条件:', { page, pageSize, storeId, dateFilter });
+  console.log('[getProcurementHistory] 筛选条件:', { page, pageSize, restaurantId, dateFilter });
   console.log('[getProcurementHistory] 查询结果:', { dataCount: data?.length, total: count });
 
   if (error) {
@@ -852,14 +866,15 @@ export async function getProcurementHistory(
 
 /**
  * 获取采购统计
+ * v5.0: restaurantId 替代 storeId
  */
-export async function getProcurementStats(storeId?: string): Promise<{ total: number; count: number }> {
+export async function getProcurementStats(restaurantId?: string): Promise<{ total: number; count: number }> {
   let query = supabase
     .from('ims_material_price')
     .select('total_amount');
 
-  if (storeId) {
-    query = query.eq('store_id', storeId);
+  if (restaurantId) {
+    query = query.eq('restaurant_id', restaurantId);
   }
 
   const { data, error } = await query;
@@ -875,18 +890,19 @@ export async function getProcurementStats(storeId?: string): Promise<{ total: nu
 
 /**
  * 删除采购记录
+ * v5.0: restaurantId 替代 storeId
  * v3.4 - 添加门店验证，只能删除本门店的记录
  * v3.3 - 新增删除功能
  */
-export async function deleteProcurementRecord(id: number, storeId?: string): Promise<boolean> {
+export async function deleteProcurementRecord(id: number, restaurantId?: string): Promise<boolean> {
   let query = supabase
     .from('ims_material_price')
     .delete()
     .eq('id', id);
 
-  // 添加门店验证，确保只能删除本门店的记录
-  if (storeId) {
-    query = query.eq('store_id', storeId);
+  // 添加餐厅验证，确保只能删除本餐厅的记录
+  if (restaurantId) {
+    query = query.eq('restaurant_id', restaurantId);
   }
 
   const { error } = await query;

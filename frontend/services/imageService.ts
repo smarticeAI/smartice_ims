@@ -191,7 +191,7 @@ export const uploadImageToStorage = async (
   // 1. Base64 转 Blob
   const blob = base64ToBlob(base64Data, mimeType);
 
-  // 2. 生成文件路径：category/store_id/日期/时间戳_随机.jpg
+  // 2. 生成文件路径：category/restaurant_id/日期/时间戳_随机.jpg
   const date = new Date().toISOString().split('T')[0];
   const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
   const path = `${category}/${storeId}/${date}/${fileName}`;

@@ -54,8 +54,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const hasChanged = JSON.stringify(freshUser) !== JSON.stringify(cachedUser);
           if (hasChanged) {
             console.log('用户信息已更新:', {
-              old: { store_id: cachedUser.store_id, store_name: cachedUser.store_name },
-              new: { store_id: freshUser.store_id, store_name: freshUser.store_name }
+              old: { restaurant_id: cachedUser.restaurant_id, restaurant_name: cachedUser.restaurant_name },
+              new: { restaurant_id: freshUser.restaurant_id, restaurant_name: freshUser.restaurant_name }
             });
             setUser(freshUser);
           }

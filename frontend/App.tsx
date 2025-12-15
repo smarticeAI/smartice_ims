@@ -42,10 +42,10 @@ const AppContent: React.FC = () => {
 
       setLogsLoading(true);
       try {
-        console.log(`[Dashboard] 当前用户 store_id: ${user?.store_id}`);
-        const data = await getPurchaseLogs(user?.store_id || undefined, 30);
+        console.log(`[Dashboard] 当前用户 restaurant_id: ${user?.restaurant_id}`);
+        const data = await getPurchaseLogs(user?.restaurant_id || undefined, 30);
         setLogs(data);
-        console.log(`[Dashboard] 加载了 ${data.length} 条采购记录 (门店过滤: ${user?.store_id ? '是' : '否'})`);
+        console.log(`[Dashboard] 加载了 ${data.length} 条采购记录 (餐厅过滤: ${user?.restaurant_id ? '是' : '否'})`);
       } catch (err) {
         console.error('[Dashboard] 加载采购记录失败:', err);
       } finally {
@@ -54,7 +54,7 @@ const AppContent: React.FC = () => {
     }
 
     loadLogs();
-  }, [isAuthenticated, user?.store_id]);
+  }, [isAuthenticated, user?.restaurant_id]);
 
   // 版本检测：每 10 分钟检查一次新版本
   useEffect(() => {
@@ -99,7 +99,7 @@ const AppContent: React.FC = () => {
   const refreshLogs = async () => {
     setLogsLoading(true);
     try {
-      const data = await getPurchaseLogs(user?.store_id || undefined, 30);
+      const data = await getPurchaseLogs(user?.restaurant_id || undefined, 30);
       setLogs(data);
     } catch (err) {
       console.error('[Dashboard] 刷新采购记录失败:', err);

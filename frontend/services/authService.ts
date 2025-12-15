@@ -1,8 +1,9 @@
 /**
- * 简化认证服务 - 直接查询 ims_users 表
- * v4.4 - brand_code 改为 brand_id 外键，直接使用数字ID
+ * 简化认证服务 - 直接查询 master_employee 表
+ * v5.0 - 迁移到 master tables: ims_users → master_employee, ims_stores → master_restaurant
  *
  * 变更历史：
+ * - v5.0: 迁移到 master tables，使用 master_employee 替代 ims_users
  * - v4.4: brand_code → brand_id，直接使用外键ID，无需字符串映射
  * - v4.3: 添加 brand_code 字段，用于区分野百灵(YBL)/宁桂杏(NGX)品牌
  * - v4.2: 添加 refreshUser 函数，支持 Stale-While-Revalidate 模式
@@ -26,19 +27,19 @@ export interface CurrentUser {
   nickname: string | null;  // 昵称，用于更亲切的显示
   phone: string | null;
   role: string;
-  store_id: string | null;
-  store_name: string | null;
+  restaurant_id: string | null;  // v5.0: store_id → restaurant_id
+  restaurant_name: string | null;  // v5.0: store_name → restaurant_name
   brand_id: number | null;  // v4.4: 品牌ID外键 (1=野百灵, 2=宁桂杏, 3=通用)
 }
 
 /**
- * 登录 - 直接查询 ims_users 表验证用户名和密码
+ * 登录 - 直接查询 master_employee 表验证用户名和密码
  * 支持账号锁定检查和失败计数
  */
 export async function login(username: string, password: string): Promise<CurrentUser> {
   // 1. 先查询用户是否存在及锁定状态
   const { data: userData, error: userError } = await supabase
-    .from('ims_users')
+    .from('master_employee')
     .select('id, is_locked, login_failed_count')
     .eq('username', username)
     .eq('is_active', true)
@@ -53,21 +54,20 @@ export async function login(username: string, password: string): Promise<Current
     throw new Error('账号已被锁定，请联系管理员解锁');
   }
 
-  // 3. 验证密码
+  // 3. 验证密码 (password_hash)
   const { data, error } = await supabase
-    .from('ims_users')
+    .from('master_employee')
     .select(`
       id,
       username,
-      name,
-      nickname,
+      employee_name,
       phone,
-      role,
-      store_id,
-      ims_stores(store_name, brand_id)
+      role_code,
+      restaurant_id,
+      master_restaurant(restaurant_name, brand_id)
     `)
     .eq('username', username)
-    .eq('password', password)
+    .eq('password_hash', password)
     .eq('is_active', true)
     .single();
 
@@ -77,7 +77,7 @@ export async function login(username: string, password: string): Promise<Current
     const shouldLock = newFailedCount >= MAX_LOGIN_ATTEMPTS;
 
     await supabase
-      .from('ims_users')
+      .from('master_employee')
       .update({
         login_failed_count: newFailedCount,
         is_locked: shouldLock,
@@ -95,7 +95,7 @@ export async function login(username: string, password: string): Promise<Current
 
   // 4. 登录成功，重置失败次数
   await supabase
-    .from('ims_users')
+    .from('master_employee')
     .update({
       login_failed_count: 0
     })
@@ -104,13 +104,13 @@ export async function login(username: string, password: string): Promise<Current
   const user: CurrentUser = {
     id: data.id,
     username: data.username,
-    name: data.name,
-    nickname: data.nickname || null,
+    name: data.employee_name,
+    nickname: null,  // master_employee doesn't have nickname field
     phone: data.phone,
-    role: data.role,
-    store_id: data.store_id,
-    store_name: (data.ims_stores as any)?.store_name || null,
-    brand_id: (data.ims_stores as any)?.brand_id || null,
+    role: data.role_code,
+    restaurant_id: data.restaurant_id,
+    restaurant_name: (data.master_restaurant as any)?.restaurant_name || null,
+    brand_id: (data.master_restaurant as any)?.brand_id || null,
   };
 
   // 保存到 localStorage
@@ -129,10 +129,10 @@ export async function changePassword(
 ): Promise<void> {
   // 1. 验证原密码
   const { data: userData, error: verifyError } = await supabase
-    .from('ims_users')
+    .from('master_employee')
     .select('id')
     .eq('id', userId)
-    .eq('password', currentPassword)
+    .eq('password_hash', currentPassword)
     .single();
 
   if (verifyError || !userData) {
@@ -141,8 +141,8 @@ export async function changePassword(
 
   // 2. 更新新密码
   const { error: updateError } = await supabase
-    .from('ims_users')
-    .update({ password: newPassword })
+    .from('master_employee')
+    .update({ password_hash: newPassword })
     .eq('id', userId);
 
   if (updateError) {
@@ -195,16 +195,15 @@ export async function isAuthenticated(): Promise<boolean> {
 export async function refreshUser(userId: string): Promise<CurrentUser | null> {
   try {
     const { data, error } = await supabase
-      .from('ims_users')
+      .from('master_employee')
       .select(`
         id,
         username,
-        name,
-        nickname,
+        employee_name,
         phone,
-        role,
-        store_id,
-        ims_stores(store_name, brand_id)
+        role_code,
+        restaurant_id,
+        master_restaurant(restaurant_name, brand_id)
       `)
       .eq('id', userId)
       .eq('is_active', true)
@@ -219,13 +218,13 @@ export async function refreshUser(userId: string): Promise<CurrentUser | null> {
     const freshUser: CurrentUser = {
       id: data.id,
       username: data.username,
-      name: data.name,
-      nickname: data.nickname || null,
+      name: data.employee_name,
+      nickname: null,
       phone: data.phone,
-      role: data.role,
-      store_id: data.store_id,
-      store_name: (data.ims_stores as any)?.store_name || null,
-      brand_id: (data.ims_stores as any)?.brand_id || null,
+      role: data.role_code,
+      restaurant_id: data.restaurant_id,
+      restaurant_name: (data.master_restaurant as any)?.restaurant_name || null,
+      brand_id: (data.master_restaurant as any)?.brand_id || null,
     };
 
     // 更新 localStorage

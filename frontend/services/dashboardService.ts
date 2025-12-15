@@ -1,5 +1,6 @@
 /**
  * 仪表板数据服务
+ * v2.0 - 使用 restaurant_id 替代 store_id
  * v1.0 - 从 ims_material_price 表获取采购统计数据
  */
 
@@ -23,11 +24,11 @@ export interface DailyTrend {
 
 /**
  * 获取仪表板统计数据
- * @param storeId 门店 ID（可选，不传则获取全部）
+ * @param restaurantId 餐厅 ID（可选，不传则获取全部）
  * @param days 最近天数，默认 30 天
  */
 export async function getDashboardStats(
-  storeId?: string,
+  restaurantId?: string,
   days: number = 30
 ): Promise<DashboardStats> {
   const startDate = new Date();
@@ -39,8 +40,8 @@ export async function getDashboardStats(
     .select('total_amount, quantity, supplier_id, supplier_name')
     .gte('price_date', startDateStr);
 
-  if (storeId) {
-    query = query.eq('store_id', storeId);
+  if (restaurantId) {
+    query = query.eq('restaurant_id', restaurantId);
   }
 
   const { data, error } = await query;
@@ -73,11 +74,11 @@ export async function getDashboardStats(
 
 /**
  * 获取每日采购趋势
- * @param storeId 门店 ID（可选）
+ * @param restaurantId 餐厅 ID（可选）
  * @param days 最近天数，默认 30 天
  */
 export async function getDailyTrend(
-  storeId?: string,
+  restaurantId?: string,
   days: number = 30
 ): Promise<DailyTrend[]> {
   const startDate = new Date();
@@ -90,8 +91,8 @@ export async function getDailyTrend(
     .gte('price_date', startDateStr)
     .order('price_date', { ascending: true });
 
-  if (storeId) {
-    query = query.eq('store_id', storeId);
+  if (restaurantId) {
+    query = query.eq('restaurant_id', restaurantId);
   }
 
   const { data, error } = await query;
@@ -118,11 +119,11 @@ export async function getDailyTrend(
 
 /**
  * 获取采购记录列表（转换为 DailyLog 格式供 Dashboard 使用）
- * @param storeId 门店 ID（可选）
+ * @param restaurantId 餐厅 ID（可选）
  * @param days 最近天数，默认 30 天
  */
 export async function getPurchaseLogs(
-  storeId?: string,
+  restaurantId?: string,
   days: number = 30
 ): Promise<DailyLog[]> {
   const startDate = new Date();
@@ -147,8 +148,8 @@ export async function getPurchaseLogs(
     .gte('price_date', startDateStr)
     .order('price_date', { ascending: false });
 
-  if (storeId) {
-    query = query.eq('store_id', storeId);
+  if (restaurantId) {
+    query = query.eq('restaurant_id', restaurantId);
   }
 
   const { data, error } = await query;
