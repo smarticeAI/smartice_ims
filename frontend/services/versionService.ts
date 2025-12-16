@@ -1,7 +1,11 @@
-// v1.0 - 版本检测服务，每 10 分钟轮询检查新版本
+// v1.1 - 版本检测服务，每 10 分钟轮询检查新版本
+// v1.1 - 修复开发模式检测，使用 import.meta.env.DEV 替代版本号判断
 
 // 当前应用版本（构建时注入）
 const CURRENT_VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
+
+// 是否为开发模式（Vite 自动注入）
+const IS_DEV_MODE = import.meta.env.DEV;
 
 // 轮询间隔：10 分钟
 const CHECK_INTERVAL = 10 * 60 * 1000;
@@ -28,8 +32,8 @@ async function checkVersion(): Promise<boolean> {
     const data = await response.json();
     const serverVersion = data.version;
 
-    // 开发模式下跳过检测
-    if (CURRENT_VERSION === 'dev') {
+    // 开发模式下跳过检测（使用 Vite 环境变量，更可靠）
+    if (IS_DEV_MODE) {
       console.log('[VersionService] 开发模式，跳过版本检测');
       return false;
     }
