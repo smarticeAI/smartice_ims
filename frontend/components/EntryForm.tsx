@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v5.6 - 修复上传倒计时结束后闪回空表单(总价=0)的问题：先跳转再重置表单状态
 // v5.5 - "其他"供应商名称保护：禁止输入保留字（其他/员工餐）或已存在的供应商名
 // v5.4 - AI 识别失败时展示智能提示（如"这不是收货单"），提升用户体验
 // v5.3 - 供应商选择启用严格模式，防止用户绕过"其他"选项直接输入新供应商
@@ -1779,21 +1780,22 @@ ${productList}
               clearInterval(countdownIntervalRef.current);
               countdownIntervalRef.current = null;
             }
-            // 重置表单状态
-            setItems([{ name: '', specification: '', quantity: 1, unit: '', unitPrice: 0, total: 0 }]);
-            setSupplier('');
-            setSupplierOther('');
-            setNotes('');
-            setReceiptImages([]);
-            setGoodsImages([]);  // v4.7: 重置货物照片数组
-            setSubmitMessage('');
-            setSubmitProgress(null);
-            setCountdown(0);
-            // v4.6: 重置 AI 使用计数
-            setUseAiPhotoCount(0);
-            setUseAiVoiceCount(0);
+            // v4.9: 先跳转再重置，避免闪回空表单（总价为0）
             // 跳转回首页
             onSave(logData);
+            // 延迟重置表单状态，确保跳转后再重置
+            setTimeout(() => {
+              setItems([{ name: '', specification: '', quantity: 1, unit: '', unitPrice: 0, total: 0 }]);
+              setSupplier('');
+              setSupplierOther('');
+              setNotes('');
+              setReceiptImages([]);
+              setGoodsImages([]);
+              setSubmitMessage('');
+              setSubmitProgress(null);
+              setUseAiPhotoCount(0);
+              setUseAiVoiceCount(0);
+            }, 100);
             return 0;
           }
           return prev - 1;
@@ -1805,28 +1807,14 @@ ${productList}
   };
 
   // 立即返回 - 跳过倒计时直接返回
+  // v4.9: 先跳转再重置，避免闪回空表单
   const handleImmediateReturn = () => {
     // 清除倒计时
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
     }
-    // 重置状态
-    setSubmitMessage('');
-    setIsSubmitting(false);
-    setSubmitProgress(null);
-    setCountdown(0);
-    // 重置表单状态
-    setItems([{ name: '', specification: '', quantity: 1, unit: '', unitPrice: 0, total: 0 }]);
-    setSupplier('');
-    setSupplierOther('');
-    setNotes('');
-    setReceiptImages([]);
-    setGoodsImages([]);  // v4.7: 重置货物照片数组
-    // v4.6: 重置 AI 使用计数
-    setUseAiPhotoCount(0);
-    setUseAiVoiceCount(0);
-    // 构建 logData 并调用 onSave 跳转
+    // 构建 logData 并调用 onSave 跳转（先跳转）
     const logData: Omit<DailyLog, 'id'> = {
       date: new Date().toISOString(),
       category: selectedCategory,
@@ -1837,6 +1825,21 @@ ${productList}
       status: 'Stocked',
     };
     onSave(logData);
+    // 延迟重置状态，确保跳转后再重置
+    setTimeout(() => {
+      setSubmitMessage('');
+      setIsSubmitting(false);
+      setSubmitProgress(null);
+      setCountdown(0);
+      setItems([{ name: '', specification: '', quantity: 1, unit: '', unitPrice: 0, total: 0 }]);
+      setSupplier('');
+      setSupplierOther('');
+      setNotes('');
+      setReceiptImages([]);
+      setGoodsImages([]);
+      setUseAiPhotoCount(0);
+      setUseAiVoiceCount(0);
+    }, 100);
   };
 
   return (
