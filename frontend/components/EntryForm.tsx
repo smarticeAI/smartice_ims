@@ -930,6 +930,7 @@ const WorksheetScreen: React.FC<{
 }
 
 // v1.8: 可编辑的转录文本组件 - 支持编辑后手动发送解析
+// v1.9: 未聚焦时保持较窄高度，聚焦后展开
 const TranscriptionBox: React.FC<{
   transcriptionText: string;
   voiceStatus: RecordingStatus;
@@ -938,6 +939,7 @@ const TranscriptionBox: React.FC<{
   isSending: boolean;
 }> = ({ transcriptionText, voiceStatus, onTextChange, onSend, isSending }) => {
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
 
   // 自动滚动到底部
   useEffect(() => {
@@ -946,15 +948,20 @@ const TranscriptionBox: React.FC<{
     }
   }, [transcriptionText]);
 
-  // 自动调整高度
+  // 自动调整高度（仅在聚焦或有内容时）
   useEffect(() => {
     if (textRef.current) {
-      textRef.current.style.height = 'auto';
-      textRef.current.style.height = Math.min(textRef.current.scrollHeight, 120) + 'px';
+      if (isFocused || transcriptionText) {
+        textRef.current.style.height = 'auto';
+        textRef.current.style.height = Math.min(textRef.current.scrollHeight, 120) + 'px';
+      } else {
+        textRef.current.style.height = '36px';
+      }
     }
-  }, [transcriptionText]);
+  }, [transcriptionText, isFocused]);
 
   const showSendButton = transcriptionText.trim() && voiceStatus !== 'recording';
+  const isExpanded = isFocused || transcriptionText || voiceStatus === 'recording';
 
   return (
     <div className="flex-1 flex items-end gap-2">
@@ -970,6 +977,8 @@ const TranscriptionBox: React.FC<{
           ref={textRef}
           value={transcriptionText}
           onChange={(e) => onTextChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           placeholder={
             voiceStatus === 'recording'
               ? '正在聆听...'
@@ -977,13 +986,15 @@ const TranscriptionBox: React.FC<{
                 ? '正在处理...'
                 : voiceStatus === 'preparing'
                   ? '正在准备...'
-                  : '尝试用AI帮忙补充或修改，您可以说：请帮我把牛肋条的单位改成kg，或请帮我添加一个猪五花，20斤，一斤23块'
+                  : isExpanded
+                    ? '尝试用AI帮忙补充或修改，您可以说：请帮我把牛肋条的单位改成kg，或请帮我添加一个猪五花，20斤，一斤23块'
+                    : '语音/文字修改...'
           }
           disabled={voiceStatus === 'recording' || voiceStatus === 'processing' || voiceStatus === 'preparing'}
           rows={1}
-          className={`w-full min-h-[44px] max-h-[120px] rounded-xl px-3 py-2.5 text-sm text-white/90 placeholder-white/30 resize-none outline-none transition-all ${
+          className={`w-full rounded-xl px-3 text-sm text-white/90 placeholder-white/30 resize-none outline-none transition-all ${
             voiceStatus === 'recording' || voiceStatus === 'preparing' ? 'bg-transparent' : 'bg-white/8'
-          }`}
+          } ${isExpanded ? 'py-2.5 min-h-[44px] max-h-[120px]' : 'py-2 h-[36px]'}`}
           style={{
             background: voiceStatus === 'recording' || transcriptionText
               ? 'rgba(255, 255, 255, 0.08)'
@@ -1447,8 +1458,8 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
     }
 
     // 检查是否有实质内容（包括图片）
-    const hasContent = selectedCategory ||
-                       supplier ||
+    // v6.0: 仅选分类不算有内容，必须有实际填写的数据才保存草稿
+    const hasContent = supplier ||
                        supplierOther ||
                        notes ||
                        items.some(item => item.name.trim() !== '') ||

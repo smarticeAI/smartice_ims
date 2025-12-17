@@ -1,5 +1,6 @@
 /**
  * 草稿服务 - 自动保存录入表单草稿
+ * v2.1 - 仅选分类不算有内容，必须有实际数据才保存/恢复草稿
  * v2.0 - 使用 IndexedDB 存储，支持图片；fallback 到 localStorage（只存文字）
  * v1.0 - 初始版本：localStorage 存储文本数据
  *
@@ -264,11 +265,11 @@ class DraftManager {
     }
 
     // 检查草稿是否有实质内容（不只是空表单）
-    const hasContent = draft.selectedCategory ||
-                       draft.supplier ||
+    // v2.1: 仅选分类不算有内容，必须有实际填写的数据才提示恢复
+    const hasContent = draft.supplier ||
                        draft.supplierOther ||
                        draft.notes ||
-                       draft.items.length > 0 ||
+                       draft.items.some(item => item.name.trim() !== '') ||
                        (draft.receiptImages && draft.receiptImages.length > 0) ||
                        (draft.goodsImages && draft.goodsImages.length > 0);
 
