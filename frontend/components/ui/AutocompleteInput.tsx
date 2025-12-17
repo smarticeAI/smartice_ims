@@ -1,8 +1,10 @@
 /**
  * 自动完成输入框组件
- * v3.7 - 修复键盘弹出时下拉框被误关闭的问题
+ * v3.8 - 修复移动端 inline 变体下拉框定位问题
  *
  * 变更历史：
+ * - v3.8: inline 变体不使用 Portal，直接在容器内渲染下拉框（absolute 定位），
+ *         解决移动端键盘弹出时位置错乱问题；default 变体保持 Portal
  * - v3.7: 修复键盘弹出导致的滚动事件误关闭下拉框；移除过于激进的滚动监听
  * - v3.6: 移除触摸时自动收起键盘，改用 pointerdown 阻止 blur；
  *         下拉框位置实时跟踪输入框；页面滚动时自动关闭下拉框
@@ -122,9 +124,10 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     }
   }, []);
 
-  // v3.6: 使用 RAF 持续更新下拉框位置，确保始终跟随输入框
+  // v3.8: 只有 default 变体使用 Portal，需要 RAF 更新位置
+  // inline 变体使用 absolute 定位，不需要位置计算
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || variant === 'inline') return;
 
     let rafId: number;
     let lastTop = 0;
@@ -134,7 +137,6 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     const updatePosition = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        // 只在位置变化时更新 state，避免不必要的重渲染
         if (rect.bottom !== lastTop || rect.left !== lastLeft || rect.width !== lastWidth) {
           lastTop = rect.bottom;
           lastLeft = rect.left;
@@ -154,7 +156,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     return () => {
       cancelAnimationFrame(rafId);
     };
-  }, [isOpen]);
+  }, [isOpen, variant]);
 
   // v3.7: 移除滚动监听，因为键盘弹出会触发页面滚动导致下拉框误关闭
   // 点击外部区域关闭下拉框的逻辑已由 handleClickOutside 处理
@@ -498,35 +500,41 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         )}
       </div>
 
-      {/* v3.1: 下拉列表 - 使用 Portal 渲染到 body，避免层叠上下文问题 */}
-      {/* v3.4: 添加 overscroll-contain 和 touch 事件处理防止移动端滚动穿透 */}
-      {isOpen &&
-        createPortal(
+      {/* v3.8: 下拉列表渲染 - inline 变体使用 absolute 定位，default 变体使用 Portal + fixed */}
+      {isOpen && (() => {
+        // 下拉框内容（两种变体共用）
+        const dropdownContent = (
           <div
             ref={dropdownRef}
             onTouchStart={handleDropdownTouchStart}
             onTouchMove={handleDropdownTouchMove}
             onTouchEnd={handleDropdownTouchEnd}
             className={clsx(
-              'fixed z-[9999]',
               'overflow-y-auto',
               'py-2',
-              'rounded-[28px]',
-              'border border-white/12'
+              'rounded-[20px]',
+              'border border-white/12',
+              // v3.8: 根据变体选择定位方式
+              variant === 'inline'
+                ? 'absolute left-0 right-0 z-[100]' // inline: absolute 定位在容器内
+                : 'fixed z-[9999]' // default: fixed 定位 + Portal
             )}
             style={{
-              top: dropdownPosition.top,
-              left: dropdownPosition.left,
-              width: dropdownPosition.width,
-              // v3.6: 限制下拉框不超出视口底部
-              maxHeight: `min(15rem, calc(100vh - ${dropdownPosition.top}px - 16px))`,
+              // v3.8: inline 变体使用相对定位，default 变体使用计算的绝对位置
+              ...(variant === 'inline'
+                ? { top: '100%', marginTop: '4px', maxHeight: '12rem' }
+                : {
+                    top: dropdownPosition.top,
+                    left: dropdownPosition.left,
+                    width: dropdownPosition.width,
+                    maxHeight: `min(15rem, calc(100vh - ${dropdownPosition.top}px - 16px))`,
+                  }),
               background:
-                'linear-gradient(145deg, rgba(25,25,30,0.95) 0%, rgba(25,25,30,0.9) 100%)',
+                'linear-gradient(145deg, rgba(25,25,30,0.98) 0%, rgba(25,25,30,0.95) 100%)',
               backdropFilter: 'blur(48px) saturate(180%)',
               WebkitBackdropFilter: 'blur(48px) saturate(180%)',
               boxShadow:
-                '0 8px 40px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3)',
-              // v3.6: 仅允许垂直滚动，阻止其他触摸行为穿透
+                '0 8px 40px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4)',
               touchAction: 'pan-y',
               WebkitOverflowScrolling: 'touch',
               overscrollBehavior: 'contain',
@@ -541,18 +549,16 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                 <button
                   key={option.id}
                   type="button"
-                  // v3.6: 使用 onPointerDown 统一处理鼠标和触摸，阻止 blur
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  // v3.6: 使用 onPointerUp 触发选择，比 onClick 更可靠
                   onPointerUp={() => selectOption(option)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={clsx(
                     'w-full px-4 py-3 text-left transition-colors',
                     'flex flex-col gap-0.5',
-                    'touch-manipulation', // 移动端优化
+                    'touch-manipulation',
                     index === highlightedIndex
                       ? 'bg-white/10 text-white'
                       : 'text-white/70 hover:bg-white/5 hover:text-white'
@@ -565,9 +571,14 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                 </button>
               ))
             )}
-          </div>,
-          document.body
-        )}
+          </div>
+        );
+
+        // v3.8: inline 变体直接渲染，default 变体使用 Portal
+        return variant === 'inline'
+          ? dropdownContent
+          : createPortal(dropdownContent, document.body);
+      })()}
 
       {/* 错误信息 */}
       {error && <p className="text-ios-red text-xs mt-1 ml-1">{error}</p>}
