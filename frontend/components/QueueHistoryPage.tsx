@@ -1,5 +1,6 @@
 /**
  * QueueHistoryPage - 采购记录页面
+ * v4.8 - 显示上传成功状态（修复成功后立即消失的bug）
  * v4.7 - 一次性加载全部记录，移除分页（解决聚合显示不完整的问题）
  * v4.6 - 添加日期筛选器（今天/本周/本月/全部）+ 聚合显示优化
  * v4.5 - 聚合显示同一次上传的多个物品（按供应商+时间戳分组）
@@ -170,9 +171,8 @@ export const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ onBack }) =>
 
   // 合并并排序记录
   const unifiedRecords: UnifiedRecord[] = [
-    // 本地队列（未成功的）
+    // v4.8: 本地队列（包含成功状态，让用户看到"已上传"后再消失）
     ...queue
-      .filter(item => item.status !== 'success')
       .map(item => ({
         type: 'queue' as RecordType,
         id: item.id,

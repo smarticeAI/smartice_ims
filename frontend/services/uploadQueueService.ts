@@ -1,11 +1,13 @@
 /**
  * 上传队列服务
+ * v1.6 - 成功后延迟删除，让用户看到"已上传"状态
  * v1.5 - 上传成功后立即清理队列项，防止 localStorage 累积占满
  * v1.4 - 添加 localStorage 写入失败检测，返回 null 时表示保存失败
  * v1.3 - 使用 brand_id 外键替代 brandCode 字符串
  * v1.1 - 添加 AI 使用统计支持（use_ai_photo, use_ai_voice）
  *
  * 变更历史：
+ * - v1.6: 上传成功后先显示 success 状态 5 秒，再从队列移除（修复消失不显示已完成的bug）
  * - v1.5: 上传成功后立即从队列移除，只保留失败项用于重试
  * - v1.4: saveQueue 返回 boolean，addToQueue 保存失败时返回 null
  * - v1.3: addToQueue/addToUploadQueue 支持传入 brandId (数字外键)
@@ -50,6 +52,7 @@ const STORAGE_KEY = 'upload_queue';
 const MAX_RETRY_COUNT = 3;
 const RETRY_DELAY_MS = 2000;           // 重试延迟 2 秒
 const PROCESS_INTERVAL_MS = 3000;      // 处理队列间隔 3 秒
+const SUCCESS_DISPLAY_MS = 5000;       // v1.6: 成功状态显示时间 5 秒
 
 // ============ 队列管理器 ============
 
@@ -286,15 +289,25 @@ class UploadQueueManager {
       );
 
       if (result.success) {
-        // v1.5: 成功后立即从队列中移除，释放 localStorage 空间
-        const index = this.queue.findIndex(i => i.id === item.id);
-        if (index !== -1) {
-          this.queue.splice(index, 1);
-        }
-        console.log(`[队列] 上传成功并已清理: ${item.id}`);
-        // 立即保存和通知（成功项已移除）
+        // v1.6: 先标记为 success 状态，让用户看到"已上传"
+        item.status = 'success';
+        item.result = result;
+        item.updatedAt = Date.now();
         this.saveQueue();
         this.notifyListeners();
+        console.log(`[队列] 上传成功: ${item.id}，将在 ${SUCCESS_DISPLAY_MS / 1000} 秒后清理`);
+
+        // 延迟删除，释放 localStorage 空间
+        setTimeout(() => {
+          const index = this.queue.findIndex(i => i.id === item.id);
+          if (index !== -1) {
+            this.queue.splice(index, 1);
+            this.saveQueue();
+            this.notifyListeners();
+            console.log(`[队列] 已清理成功项: ${item.id}`);
+          }
+        }, SUCCESS_DISPLAY_MS);
+
         return; // 提前返回，不执行后面的 saveQueue
       } else {
         // 提交失败（返回错误）
