@@ -1,6 +1,6 @@
 /**
  * GlassCard - 毛玻璃卡片组件
- * v1.1 - 添加 onClick 支持
+ * v1.2 - 添加 style 支持（用于动态 z-index）
  */
 import { clsx } from 'clsx';
 
@@ -11,6 +11,7 @@ interface GlassCardProps {
   variant?: 'default' | 'elevated' | 'subtle';
   interactive?: boolean;
   onClick?: () => void;
+  style?: React.CSSProperties;
 }
 
 const paddingMap = {
@@ -33,6 +34,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   variant = 'default',
   interactive = false,
   onClick,
+  style,
 }) => {
   return (
     <div
@@ -43,6 +45,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
         className
       )}
       onClick={onClick}
+      style={style}
     >
       {children}
     </div>

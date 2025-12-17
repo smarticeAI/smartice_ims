@@ -697,9 +697,10 @@ const WorksheetScreen: React.FC<{
             <span className="text-lg text-muted">{items.length} 项</span>
           </div>
 
+          {/* v4.1: 反向 z-index 让前面卡片的下拉框能覆盖后面的卡片 */}
           <div className="space-y-3">
             {items.map((item, index) => (
-              <GlassCard key={index} padding="md" className="relative group">
+              <GlassCard key={index} padding="md" className="relative group" style={{ zIndex: items.length - index }}>
                  {/* Top Row: Name & Delete */}
                  <div className="flex items-start justify-between mb-4">
                     {/* v5.0: 员工餐模式下显示固定文本，普通模式下显示自动完成输入框 */}
