@@ -1,8 +1,10 @@
 /**
  * 自动完成输入框组件
- * v4.0 - 统一所有变体使用 absolute 定位，修复下拉按钮过滤逻辑
+ * v4.1 - 修复 backdrop-filter 层叠上下文导致下拉框被遮挡问题
  *
  * 变更历史：
+ * - v4.1: 下拉框打开时给容器添加 isolate + z-[9999]，
+ *         解决 glass-card 的 backdrop-filter 创建层叠上下文导致 z-index 失效的问题
  * - v4.0: 所有变体统一使用 absolute 定位，移除 Portal；
  *         下拉按钮点击时根据当前输入内容过滤，不再重置显示全部；
  *         提高 z-index 到 9999 确保不被其他元素遮挡
@@ -357,7 +359,12 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   }, [isOpen, value, minChars, getAllOptionsFn, searchFn, extraOptions]);
 
   return (
-    <div ref={containerRef} className={clsx('relative w-full', className)}>
+    // v4.1: 下拉框打开时添加 isolate + 高 z-index，解决 backdrop-filter 层叠上下文问题
+    <div ref={containerRef} className={clsx(
+      'relative w-full',
+      isOpen && 'isolate z-[9999]',
+      className
+    )}>
       {/* 标签（仅 default 变体） */}
       {label && variant === 'default' && (
         <label className="block text-[20px] tracking-wider text-zinc-500 font-bold mb-2 ml-1">
