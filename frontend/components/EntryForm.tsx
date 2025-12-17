@@ -862,21 +862,22 @@ const WorksheetScreen: React.FC<{
                  }}>
 
                {/* Main Row: Voice Button + Text Box (no submit button here) */}
-               <div className="flex items-start gap-2">
+               <div className="flex items-center gap-2">
                  {/* v3.0: file inputs moved to image upload section */}
 
                  {/* v1.7: 只保留语音按钮 */}
+                 {/* v1.9: 按钮高度调整为36px，与折叠状态textarea一致 */}
                  <div className="flex items-center">
                    {/* Voice Recording Button - Start or Stop */}
                    {voiceStatus === 'recording' ? (
                      /* Stop Button - Red circle with white square SVG */
                      <button
                        onClick={onVoiceStop}
-                       className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-95 flex-shrink-0"
+                       className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 flex-shrink-0"
                      >
-                       <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                         <circle cx="14" cy="14" r="13" stroke="#ef4444" strokeWidth="2" className="animate-pulse" style={{ filter: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.6))' }} />
-                         <rect x="9" y="9" width="10" height="10" rx="1.5" fill="white" />
+                       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                         <circle cx="11" cy="11" r="10" stroke="#ef4444" strokeWidth="2" className="animate-pulse" style={{ filter: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.6))' }} />
+                         <rect x="7" y="7" width="8" height="8" rx="1.5" fill="white" />
                        </svg>
                      </button>
                    ) : (
@@ -884,12 +885,12 @@ const WorksheetScreen: React.FC<{
                      <button
                        onClick={onVoiceStart}
                        disabled={isAnalyzing || voiceStatus === 'processing' || voiceStatus === 'preparing'}
-                       className="w-11 h-11 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40 flex-shrink-0"
+                       className="w-9 h-9 rounded-xl flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors active:scale-95 disabled:opacity-40 flex-shrink-0"
                      >
                        {(voiceStatus === 'processing' || voiceStatus === 'preparing') ? (
-                         <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                         <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
                        ) : (
-                         <Icons.Microphone className="w-5 h-5" />
+                         <Icons.Microphone className="w-[18px] h-[18px]" />
                        )}
                      </button>
                    )}

@@ -1,25 +1,25 @@
 /**
  * 自动完成输入框组件
- * v3.8 - 修复移动端 inline 变体下拉框定位问题
+ * v4.0 - 统一所有变体使用 absolute 定位，修复下拉按钮过滤逻辑
  *
  * 变更历史：
- * - v3.8: inline 变体不使用 Portal，直接在容器内渲染下拉框（absolute 定位），
- *         解决移动端键盘弹出时位置错乱问题；default 变体保持 Portal
- * - v3.7: 修复键盘弹出导致的滚动事件误关闭下拉框；移除过于激进的滚动监听
- * - v3.6: 移除触摸时自动收起键盘，改用 pointerdown 阻止 blur；
- *         下拉框位置实时跟踪输入框；页面滚动时自动关闭下拉框
- * - v3.5: 触摸下拉框时自动收起软键盘，改善移动端选择体验
- * - v3.4: 修复移动端下拉框滚动穿透问题，添加 touch-action 和 overscroll-behavior
- * - v3.3: 新增 strictSelection 属性，启用时用户只能从下拉列表选择值
- * - v3.2: inline 变体输入框容器添加边框样式（bg-cacao-husk/60 + 棕色边框）
- * - v3.1: 使用 createPortal 将下拉框渲染到 body，避免被 GlassCard 遮挡
- * - v3.0: 新增 showDropdownButton 倒三角按钮，点击可展开下拉列表
+ * - v4.0: 所有变体统一使用 absolute 定位，移除 Portal；
+ *         下拉按钮点击时根据当前输入内容过滤，不再重置显示全部；
+ *         提高 z-index 到 9999 确保不被其他元素遮挡
+ * - v3.8: inline 变体不使用 Portal，直接在容器内渲染下拉框（absolute 定位）
+ * - v3.7: 修复键盘弹出导致的滚动事件误关闭下拉框
+ * - v3.6: 移除触摸时自动收起键盘，改用 pointerdown 阻止 blur
+ * - v3.5: 触摸下拉框时自动收起软键盘
+ * - v3.4: 修复移动端下拉框滚动穿透问题
+ * - v3.3: 新增 strictSelection 属性
+ * - v3.2: inline 变体输入框容器添加边框样式
+ * - v3.1: 使用 createPortal 将下拉框渲染到 body
+ * - v3.0: 新增 showDropdownButton 倒三角按钮
  * - v2.0: 新增 extraOptions 支持静态选项
- * - v1.0: 支持汉字 + 拼音首字母搜索，毛玻璃风格下拉列表
+ * - v1.0: 支持汉字 + 拼音首字母搜索
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 
 /**
@@ -96,8 +96,6 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const [options, setOptions] = useState<AutocompleteOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  // v3.1: 下拉框位置（用于 Portal 定位）
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   // v3.3: 严格模式下，记录最后一次有效选择的值
   const [lastValidValue, setLastValidValue] = useState(value);
   // v3.3: 追踪是否通过选择方式设置了值
@@ -109,57 +107,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
-  // v3.1: 下拉框 ref（用于 Portal 点击外部检测）
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // v3.1: 更新下拉框位置
-  const updateDropdownPosition = useCallback(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + 8, // 8px gap
-        left: rect.left,
-        width: rect.width,
-      });
-    }
-  }, []);
-
-  // v3.8: 只有 default 变体使用 Portal，需要 RAF 更新位置
-  // inline 变体使用 absolute 定位，不需要位置计算
-  useEffect(() => {
-    if (!isOpen || variant === 'inline') return;
-
-    let rafId: number;
-    let lastTop = 0;
-    let lastLeft = 0;
-    let lastWidth = 0;
-
-    const updatePosition = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        if (rect.bottom !== lastTop || rect.left !== lastLeft || rect.width !== lastWidth) {
-          lastTop = rect.bottom;
-          lastLeft = rect.left;
-          lastWidth = rect.width;
-          setDropdownPosition({
-            top: rect.bottom + 8,
-            left: rect.left,
-            width: rect.width,
-          });
-        }
-      }
-      rafId = requestAnimationFrame(updatePosition);
-    };
-
-    updatePosition();
-
-    return () => {
-      cancelAnimationFrame(rafId);
-    };
-  }, [isOpen, variant]);
-
-  // v3.7: 移除滚动监听，因为键盘弹出会触发页面滚动导致下拉框误关闭
-  // 点击外部区域关闭下拉框的逻辑已由 handleClickOutside 处理
 
   // v3.6: 下拉框内部滚动时完全阻止事件穿透到页面
   const handleDropdownTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
@@ -374,6 +322,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     e.preventDefault();
   }, []);
 
+  // v4.0: 下拉按钮点击 - 根据当前输入内容过滤，不再重置显示全部
   const handleDropdownClick = useCallback(async () => {
     if (isOpen) {
       setIsOpen(false);
@@ -382,18 +331,21 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
     setIsLoading(true);
     try {
-      let allOptions: AutocompleteOption[] = [];
+      let filteredOptions: AutocompleteOption[] = [];
 
-      // 优先使用 getAllOptionsFn，否则用空字符串调用 searchFn
-      if (getAllOptionsFn) {
-        allOptions = await getAllOptionsFn();
+      // v4.0: 如果输入框有内容且达到最小字符数，根据内容过滤
+      if (value && value.length >= minChars) {
+        filteredOptions = await searchFn(value);
+      } else if (getAllOptionsFn) {
+        // 如果输入为空，使用 getAllOptionsFn 获取全部
+        filteredOptions = await getAllOptionsFn();
       } else {
-        // 如果没有 getAllOptionsFn，尝试用空搜索获取全部
-        allOptions = await searchFn('');
+        // 没有 getAllOptionsFn，用空搜索获取全部
+        filteredOptions = await searchFn('');
       }
 
       // 合并 extraOptions
-      const combinedOptions = [...allOptions, ...extraOptions];
+      const combinedOptions = [...filteredOptions, ...extraOptions];
       setOptions(combinedOptions);
       setIsOpen(combinedOptions.length > 0);
       setHighlightedIndex(-1);
@@ -402,7 +354,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isOpen, getAllOptionsFn, searchFn, extraOptions]);
+  }, [isOpen, value, minChars, getAllOptionsFn, searchFn, extraOptions]);
 
   return (
     <div ref={containerRef} className={clsx('relative w-full', className)}>
@@ -500,85 +452,68 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         )}
       </div>
 
-      {/* v3.8: 下拉列表渲染 - inline 变体使用 absolute 定位，default 变体使用 Portal + fixed */}
-      {isOpen && (() => {
-        // 下拉框内容（两种变体共用）
-        const dropdownContent = (
-          <div
-            ref={dropdownRef}
-            onTouchStart={handleDropdownTouchStart}
-            onTouchMove={handleDropdownTouchMove}
-            onTouchEnd={handleDropdownTouchEnd}
-            className={clsx(
-              'overflow-y-auto',
-              'py-2',
-              'rounded-[20px]',
-              'border border-white/12',
-              // v3.8: 根据变体选择定位方式
-              variant === 'inline'
-                ? 'absolute left-0 right-0 z-[100]' // inline: absolute 定位在容器内
-                : 'fixed z-[9999]' // default: fixed 定位 + Portal
-            )}
-            style={{
-              // v3.8: inline 变体使用相对定位，default 变体使用计算的绝对位置
-              ...(variant === 'inline'
-                ? { top: '100%', marginTop: '4px', maxHeight: '12rem' }
-                : {
-                    top: dropdownPosition.top,
-                    left: dropdownPosition.left,
-                    width: dropdownPosition.width,
-                    maxHeight: `min(15rem, calc(100vh - ${dropdownPosition.top}px - 16px))`,
-                  }),
-              background:
-                'linear-gradient(145deg, rgba(25,25,30,0.98) 0%, rgba(25,25,30,0.95) 100%)',
-              backdropFilter: 'blur(48px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(48px) saturate(180%)',
-              boxShadow:
-                '0 8px 40px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4)',
-              touchAction: 'pan-y',
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehavior: 'contain',
-            }}
-          >
-            {options.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-white/50 text-center">
-                无匹配结果
-              </div>
-            ) : (
-              options.map((option, index) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onPointerUp={() => selectOption(option)}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                  className={clsx(
-                    'w-full px-4 py-3 text-left transition-colors',
-                    'flex flex-col gap-0.5',
-                    'touch-manipulation',
-                    index === highlightedIndex
-                      ? 'bg-white/10 text-white'
-                      : 'text-white/70 hover:bg-white/5 hover:text-white'
-                  )}
-                >
-                  <span className="text-sm font-medium">{option.label}</span>
-                  {option.sublabel && (
-                    <span className="text-xs text-white/50">{option.sublabel}</span>
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        );
-
-        // v3.8: inline 变体直接渲染，default 变体使用 Portal
-        return variant === 'inline'
-          ? dropdownContent
-          : createPortal(dropdownContent, document.body);
-      })()}
+      {/* v4.0: 下拉列表渲染 - 所有变体统一使用 absolute 定位，不使用 Portal */}
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          onTouchStart={handleDropdownTouchStart}
+          onTouchMove={handleDropdownTouchMove}
+          onTouchEnd={handleDropdownTouchEnd}
+          className={clsx(
+            'absolute left-0 right-0 z-[9999]', // v4.0: 统一 absolute 定位 + 高 z-index
+            'overflow-y-auto',
+            'py-2',
+            'rounded-[20px]',
+            'border border-white/12'
+          )}
+          style={{
+            top: '100%',
+            marginTop: '4px',
+            maxHeight: variant === 'inline' ? '12rem' : '15rem',
+            background:
+              'linear-gradient(145deg, rgba(25,25,30,0.98) 0%, rgba(25,25,30,0.95) 100%)',
+            backdropFilter: 'blur(48px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(48px) saturate(180%)',
+            boxShadow:
+              '0 8px 40px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4)',
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain',
+          }}
+        >
+          {options.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-white/50 text-center">
+              无匹配结果
+            </div>
+          ) : (
+            options.map((option, index) => (
+              <button
+                key={option.id}
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onPointerUp={() => selectOption(option)}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                className={clsx(
+                  'w-full px-4 py-3 text-left transition-colors',
+                  'flex flex-col gap-0.5',
+                  'touch-manipulation',
+                  index === highlightedIndex
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                )}
+              >
+                <span className="text-sm font-medium">{option.label}</span>
+                {option.sublabel && (
+                  <span className="text-xs text-white/50">{option.sublabel}</span>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      )}
 
       {/* 错误信息 */}
       {error && <p className="text-ios-red text-xs mt-1 ml-1">{error}</p>}
