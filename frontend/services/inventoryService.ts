@@ -119,15 +119,18 @@ export async function submitProcurement(
   console.log(`[提交] 门店: ${storeId}, 员工: ${employeeId}`);
 
   // 上传图片
-  // v3.3: receiptImages 改为数组，支持多张收货单
-  // v3.8: goodsImages 改为数组，支持多张货物照片
+  // v5.9: 支持两种模式：
+  //   1. 有 receiptImageUrls/goodsImageUrls (URL) → 直接使用（图片已上传）
+  //   2. 有 receiptImages/goodsImages (Base64) → 需要上传
   let receiptImageUrls: string[] = [];
   let goodsImageUrls: string[] = [];
 
-  // v3.1: 图片上传失败时立即返回错误，不继续插入数据
-  // v3.2: 通过 onProgress 回调报告进度
-  // v3.3: 循环上传多张收货单图片
-  if (dailyLog.receiptImages && dailyLog.receiptImages.length > 0) {
+  // v5.9: 优先使用已上传的 URL（队列重试场景）
+  if (dailyLog.receiptImageUrls && dailyLog.receiptImageUrls.length > 0) {
+    receiptImageUrls = dailyLog.receiptImageUrls;
+    console.log(`[提交] 使用已上传的收货单 URL: ${receiptImageUrls.length} 张`);
+  } else if (dailyLog.receiptImages && dailyLog.receiptImages.length > 0) {
+    // 需要上传图片
     try {
       onProgress?.('uploading_receipt');
       console.log(`[提交] 上传 ${dailyLog.receiptImages.length} 张收货单图片...`);
@@ -145,12 +148,16 @@ export async function submitProcurement(
     } catch (err) {
       console.error('[提交] 收货单图片上传失败:', err);
       result.errors.push(`收货单图片上传失败: ${err instanceof Error ? err.message : '未知错误'}`);
-      return result; // 立即返回，不继续提交
+      return result;
     }
   }
 
-  // v3.8: 循环上传多张货物图片
-  if (dailyLog.goodsImages && dailyLog.goodsImages.length > 0) {
+  // v5.9: 优先使用已上传的 URL
+  if (dailyLog.goodsImageUrls && dailyLog.goodsImageUrls.length > 0) {
+    goodsImageUrls = dailyLog.goodsImageUrls;
+    console.log(`[提交] 使用已上传的货物图片 URL: ${goodsImageUrls.length} 张`);
+  } else if (dailyLog.goodsImages && dailyLog.goodsImages.length > 0) {
+    // 需要上传图片
     try {
       onProgress?.('uploading_goods');
       console.log(`[提交] 上传 ${dailyLog.goodsImages.length} 张货物图片...`);
@@ -168,7 +175,7 @@ export async function submitProcurement(
     } catch (err) {
       console.error('[提交] 货物图片上传失败:', err);
       result.errors.push(`货物图片上传失败: ${err instanceof Error ? err.message : '未知错误'}`);
-      return result; // 立即返回，不继续提交
+      return result;
     }
   }
 

@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v5.9 - 队列存储改用 IndexedDB：解决 5MB localStorage 限制，支持大量图片无丢失上传
 // v5.8 - 自动存草稿功能：表单数据自动保存到 localStorage，重新打开时可恢复上次录入
 // v5.7 - 网络错误处理优化：区分验证阶段的网络错误和产品未找到，队列写入失败时提示用户
 // v5.6 - 修复上传倒计时结束后闪回空表单(总价=0)的问题：先跳转再重置表单状态
@@ -38,7 +39,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DailyLog, ProcurementItem, CategoryType, AttachedImage } from '../types';
 import { usePreloadData } from '../contexts/PreloadDataContext';
 import { recognizeReceipt, RecognitionParseError } from '../services/receiptRecognitionService';
-import { compressImage, generateThumbnail, formatFileSize, compressForUpload } from '../services/imageService';
+import { compressImage, generateThumbnail, formatFileSize } from '../services/imageService';
 import { voiceEntryService, RecordingStatus, VoiceEntryResult } from '../services/voiceEntryService';
 import { SubmitProgress } from '../services/inventoryService';
 import { addToUploadQueue } from '../services/uploadQueueService';
@@ -1908,36 +1909,12 @@ ${productList}
 
 
   // v4.6: 确认提交直接加入队列（后台上传，用户无需等待）+ AI 使用统计
-  // v5.8: 改为 async，提交前压缩图片解决 localStorage 5MB 限制
+  // v5.9: 使用 IndexedDB 存储队列，无需额外压缩图片（容量充足）
   const handleSummaryConfirm = async () => {
     const validItems = items.filter(i => i.name.trim() !== '');
 
-    // v5.8: 压缩图片用于上传（300KB/张），解决 localStorage 限制
-    // AI 识别用的是高清原图，上传/存储用压缩版本
-    let compressedReceiptImages: AttachedImage[] | undefined;
-    let compressedGoodsImages: AttachedImage[] | undefined;
-
-    if (receiptImages.length > 0) {
-      console.log(`[提交] 压缩 ${receiptImages.length} 张收货单图片...`);
-      compressedReceiptImages = await Promise.all(
-        receiptImages.map(async (img) => ({
-          ...img,
-          data: await compressForUpload(img.data, 300),
-        }))
-      );
-    }
-
-    if (goodsImages.length > 0) {
-      console.log(`[提交] 压缩 ${goodsImages.length} 张货物照片...`);
-      compressedGoodsImages = await Promise.all(
-        goodsImages.map(async (img) => ({
-          ...img,
-          data: await compressForUpload(img.data, 300),
-        }))
-      );
-    }
-
-    // 构建日志数据（使用压缩后的图片）
+    // v5.9: IndexedDB 容量充足，直接使用原图（已在拍照时压缩到 1.5MB）
+    // 不再二次压缩到 300KB，保留更好的图片质量
     const logData: Omit<DailyLog, 'id'> = {
       date: new Date().toISOString(),
       category: selectedCategory,
@@ -1947,8 +1924,8 @@ ${productList}
       totalCost: calculateGrandTotal(),
       notes: notes,
       status: 'Stocked',
-      receiptImages: compressedReceiptImages,
-      goodsImages: compressedGoodsImages,
+      receiptImages: receiptImages.length > 0 ? receiptImages : undefined,
+      goodsImages: goodsImages.length > 0 ? goodsImages : undefined,
     };
 
     // v4.6: 构建 AI 使用统计
@@ -1961,9 +1938,10 @@ ${productList}
     // 添加到队列
     // v5.2: 传递 brand_id 用于新建供应商时绑定品牌
     // v5.7: 添加 try-catch 处理队列写入失败
+    // v5.9: addToUploadQueue 现在是异步函数（使用 IndexedDB）
     if (storeId && employeeId) {
       try {
-        const queueId = addToUploadQueue(logData, storeId, employeeId, aiUsage, user?.brand_id);
+        const queueId = await addToUploadQueue(logData, storeId, employeeId, aiUsage, user?.brand_id);
         if (!queueId) {
           throw new Error('队列写入失败');
         }
