@@ -1,9 +1,11 @@
 /**
  * IndexedDB 存储服务
+ * v1.2 - 移除日常操作日志，只保留错误日志
  * v1.1 - 添加详细日志 + 存储大小估算
  * v1.0 - 替代 localStorage，解决 5MB 容量限制问题
  *
  * 变更历史：
+ * - v1.2: 移除频繁的日常操作日志（保存成功等），只保留错误日志
  * - v1.1: 添加详细日志便于调试，新增 getStorageEstimate 函数
  * - v1.0: 初始版本，支持队列数据持久化
  *
@@ -39,7 +41,7 @@ async function getDB(): Promise<IDBDatabase> {
 
     request.onsuccess = () => {
       dbInstance = request.result;
-      console.log('[IndexedDB] 数据库已连接');
+      // v1.2: 移除日常连接日志
       resolve(dbInstance);
     };
 
@@ -49,7 +51,7 @@ async function getDB(): Promise<IDBDatabase> {
       // 创建对象存储（类似表）
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-        console.log('[IndexedDB] 创建存储: upload_queue');
+        // v1.2: 移除创建存储日志（只发生一次）
       }
     };
   });
@@ -73,7 +75,7 @@ export async function setItem<T>(key: string, value: T): Promise<void> {
     const request = store.put({ key, value });
 
     request.onsuccess = () => {
-      console.log(`[IndexedDB] 保存成功: ${key}, 大小: ${(dataSize / 1024).toFixed(1)}KB`);
+      // v1.2: 移除保存成功日志（频繁调用会刷屏）
       resolve();
     };
 
@@ -150,7 +152,7 @@ export async function clear(): Promise<void> {
     const request = store.clear();
 
     request.onsuccess = () => {
-      console.log('[IndexedDB] 已清空所有数据');
+      // v1.2: 移除清空成功日志
       resolve();
     };
 
@@ -191,7 +193,7 @@ export async function migrateFromLocalStorage<T>(
     // 删除 localStorage 数据
     localStorage.removeItem(localStorageKey);
 
-    console.log(`[IndexedDB] 迁移完成: ${localStorageKey} -> ${indexedDBKey}`);
+    // v1.2: 移除迁移日志
     return parsed;
   } catch (error) {
     console.error('[IndexedDB] 迁移失败:', error);
@@ -209,13 +211,13 @@ export async function getStorageEstimate(): Promise<{ usage: number; quota: numb
       const estimate = await navigator.storage.estimate();
       const usage = estimate.usage || 0;
       const quota = estimate.quota || 0;
-      console.log(`[IndexedDB] 存储空间: 已用 ${(usage / 1024 / 1024).toFixed(2)}MB / 总计 ${(quota / 1024 / 1024).toFixed(0)}MB (${((usage / quota) * 100).toFixed(2)}%)`);
+      // v1.2: 移除存储空间日志（调用方可以根据返回值自行打印）
       return { usage, quota };
     } catch (error) {
       console.error('[IndexedDB] 获取存储估算失败:', error);
       return null;
     }
   }
-  console.warn('[IndexedDB] 浏览器不支持 storage.estimate API');
+  // v1.2: 移除不支持 API 的警告日志
   return null;
 }

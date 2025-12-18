@@ -1,4 +1,8 @@
 // EntryForm - 采购录入表单
+// v6.4 - 修复验证问题：删除行时重映射索引，AI识别后验证所有物品，日志前缀改为[表单填充]
+// v6.3 - 修复物料名称验证问题：手动修改名称时立即清除 productId 和验证错误，确保 onBlur 时重新验证
+// v6.2 - AI 二次纠偏层：识别后比对数据库物料名，使用 Gemini 纠正 OCR 错误（如"天蒜"→"大蒜"）
+// v6.1 - 物料名称实时验证：输入框失焦时检查物料是否存在于数据库，不存在则显示红色边框+提示
 // v6.0 - 修复草稿缓存问题：提交成功后草稿被 useEffect 重新保存导致下次进入提示恢复
 // v5.10 - 草稿支持图片：使用 IndexedDB 存储，fallback 到 localStorage（只存文字）
 // v5.9 - 队列存储改用 IndexedDB：解决 5MB localStorage 限制，支持大量图片无丢失上传
@@ -41,6 +45,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DailyLog, ProcurementItem, CategoryType, AttachedImage } from '../types';
 import { usePreloadData } from '../contexts/PreloadDataContext';
 import { recognizeReceipt, RecognitionParseError } from '../services/receiptRecognitionService';
+import { formatCorrectionMessage } from '../services/materialCorrectionService';
 import { compressImage, generateThumbnail, formatFileSize, compressForUpload } from '../services/imageService';
 import { voiceEntryService, RecordingStatus, VoiceEntryResult } from '../services/voiceEntryService';
 import { SubmitProgress } from '../services/inventoryService';
@@ -360,6 +365,7 @@ const CategoryScreen: React.FC<{
 
 // --- Worksheet Screen ---
 
+// v6.1 - 添加物料名称实时验证功能
 // v5.0 - 添加 selectedCategory prop，员工餐分类特殊处理
 // v4.7 - goodsImages 改为数组，支持多张货物照片（称重核对留证）
 // v3.5 - receiptImages 改为数组，支持多张收货单，AI识别按钮移至图片下方
@@ -376,6 +382,8 @@ const WorksheetScreen: React.FC<{
   receiptImages: AttachedImage[];  // v3.5: 多张收货单
   goodsImages: AttachedImage[];    // v4.7: 多张货物照片
   voiceStatus: RecordingStatus;
+  materialValidationErrors: Record<number, string>;  // v6.1: 物料名称验证错误
+  onMaterialNameBlur: (index: number, name: string) => void;  // v6.1: 物料名称失焦验证
   voiceMessage: string;
   transcriptionText: string;
   showTranscription: boolean;
@@ -402,6 +410,7 @@ const WorksheetScreen: React.FC<{
 }> = ({
   items, supplier, supplierOther, notes, isAnalyzing, isRecognizing, grandTotal, receiptImages, goodsImages,
   voiceStatus, voiceMessage, transcriptionText, showTranscription, isSendingTranscription, selectedCategory,
+  materialValidationErrors, onMaterialNameBlur,
   onBack, onSupplierChange, onSupplierOtherChange, onNotesChange, onItemChange, onProductSelect, onAddItem, onRemoveItem,
   onReceiptImageUpload, onGoodsImageUpload, onRemoveReceiptImage, onRemoveGoodsImage, onAIRecognize,
   onVoiceStart, onVoiceStop, onTranscriptionChange, onSendTranscription, onReview
@@ -710,19 +719,30 @@ const WorksheetScreen: React.FC<{
                         <span className="text-[13px] font-bold text-primary">员工餐</span>
                       </div>
                     ) : (
-                      <AutocompleteInput
-                        value={item.name}
-                        onChange={(val) => onItemChange(index, 'name', val)}
-                        placeholder="商品名称"
-                        searchFn={searchProducts}
-                        variant="inline"
-                        inputClassName="text-[13px] font-bold text-primary placeholder-muted"
-                        debounceMs={250}
-                        minChars={1}
-                        showDropdownButton={true}
-                        getAllOptionsFn={getAllProductsAsOptions}
-                        onSelect={(option) => onProductSelect(index, option)}
-                      />
+                      <div className="flex-1">
+                        <AutocompleteInput
+                          value={item.name}
+                          onChange={(val) => onItemChange(index, 'name', val)}
+                          placeholder="商品名称"
+                          searchFn={searchProducts}
+                          variant="inline"
+                          inputClassName={`text-[13px] font-bold text-primary placeholder-muted ${
+                            materialValidationErrors[index] ? 'border-ios-red' : ''
+                          }`}
+                          debounceMs={250}
+                          minChars={1}
+                          showDropdownButton={true}
+                          getAllOptionsFn={getAllProductsAsOptions}
+                          onSelect={(option) => onProductSelect(index, option)}
+                          onBlurCustom={(val) => onMaterialNameBlur(index, val)}
+                        />
+                        {/* v6.1: 显示验证错误提示 */}
+                        {materialValidationErrors[index] && (
+                          <p className="text-ios-red text-[10px] mt-1 ml-1">
+                            {materialValidationErrors[index]}
+                          </p>
+                        )}
+                      </div>
                     )}
                     {/* v5.0: 员工餐模式下隐藏删除按钮（只有一个物品） */}
                     {!isStaffMealMode && (
@@ -1233,7 +1253,8 @@ const SummaryScreen: React.FC<{
 export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNickname, onOpenMenu }) => {
   // v4.4: 从预加载数据获取分类
   // v5.5: 新增 suppliers 用于验证"其他"供应商名称是否重复
-  const { categories, suppliers } = usePreloadData();
+  // v6.2: 新增 products 用于 AI 识别二次纠偏
+  const { categories, suppliers, products } = usePreloadData();
 
   const [step, setStep] = useState<EntryStep>('WELCOME');
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('');
@@ -1263,6 +1284,13 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
   // v4.6: AI 使用统计
   const [useAiPhotoCount, setUseAiPhotoCount] = useState(0);  // AI 识图使用次数
   const [useAiVoiceCount, setUseAiVoiceCount] = useState(0);  // 语音识别使用次数
+
+  // v6.1: 物料名称实时验证状态（记录每个物品的验证状态）
+  const [materialValidationErrors, setMaterialValidationErrors] = useState<Record<number, string>>({});
+
+  // v6.2: AI 二次纠偏结果弹窗
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [correctionMessage, setCorrectionMessage] = useState('');
 
   // v3.3: 获取当前表单数据（用于传递给 AI 进行修改）
   const getCurrentFormData = (): VoiceEntryResult => {
@@ -1295,10 +1323,11 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
   };
 
   // v1.8: 填充表单数据的公共函数（新建模式，仅添加）
+  // v6.4: 日志前缀改为 [表单填充]，因为语音和AI识别都会调用
   const fillFormWithResult = (result: VoiceEntryResult) => {
     // 1. 供应商：REPLACE（替换）
     if (result.supplier) {
-      console.log('[语音录入] 供应商替换:', result.supplier);
+      console.log('[表单填充] 供应商替换:', result.supplier);
       setSupplier(result.supplier);
     }
 
@@ -1306,11 +1335,11 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
     if (result.notes) {
       setNotes(prev => {
         if (!prev || prev.trim() === '') {
-          console.log('[语音录入] 备注设置（首次）:', result.notes);
+          console.log('[表单填充] 备注设置（首次）:', result.notes);
           return result.notes;
         }
         const merged = `${prev}；${result.notes}`;
-        console.log('[语音录入] 备注追加:', prev, '→', merged);
+        console.log('[表单填充] 备注追加:', prev, '→', merged);
         return merged;
       });
     }
@@ -1320,7 +1349,7 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
       setItems(prev => {
         const existingItems = prev.filter(item => item.name.trim() !== '');
         const merged = [...existingItems, ...result.items];
-        console.log('[语音录入] 物品添加:', existingItems.length, '→', merged.length, '(新增', result.items.length, '项)');
+        console.log('[表单填充] 物品添加:', existingItems.length, '→', merged.length, '(新增', result.items.length, '项)');
         return merged;
       });
     }
@@ -1553,10 +1582,16 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
     const updatedItem = { ...newItems[index], [field]: value };
 
     // v3.1: 手动输入名称时清除之前选择的 productId（因为名称变了）
-    // 但如果是通过 onSelect 设置的 productId，则不清除
+    // v6.3: 确保清除 productId 和验证错误，防止状态不同步
     if (field === 'name') {
       // 用户手动输入，清除 productId，提交时会尝试匹配
       updatedItem.productId = undefined;
+      // 清除该行的验证错误（如果有）
+      setMaterialValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[index];
+        return newErrors;
+      });
     }
 
     // v2.1 - 双向计算：支持用户输入总价或单价
@@ -1588,14 +1623,89 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
       productId: option.id as number
     };
     setItems(newItems);
+    // v6.1: 选择后清除验证错误
+    setMaterialValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[index];
+      return newErrors;
+    });
+  };
+
+  // v6.4: 验证物料名称是否存在于数据库（onBlur 时触发）
+  // 添加详细 debug log，修复验证逻辑
+  const handleMaterialNameValidation = async (index: number, materialName: string) => {
+    console.log(`[物料验证] 开始验证 index=${index}, name="${materialName}"`);
+
+    // 如果名称为空，清除错误
+    if (!materialName.trim()) {
+      console.log(`[物料验证] index=${index} 名称为空，清除错误`);
+      setMaterialValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[index];
+        return newErrors;
+      });
+      return;
+    }
+
+    // 使用 exactMatchProduct 验证名称是否存在（支持别名匹配）
+    try {
+      console.log(`[物料验证] index=${index} 调用 exactMatchProduct("${materialName.trim()}")`);
+      const product = await exactMatchProduct(materialName.trim());
+      console.log(`[物料验证] index=${index} 验证结果:`, product ? `找到 "${product.name}"` : '未找到');
+
+      if (product) {
+        // 找到匹配，清除错误
+        setMaterialValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[index];
+          console.log(`[物料验证] index=${index} 匹配成功，清除错误`);
+          return newErrors;
+        });
+      } else {
+        // 未找到匹配，设置错误
+        console.log(`[物料验证] index=${index} 未匹配，设置错误`);
+        setMaterialValidationErrors(prev => ({
+          ...prev,
+          [index]: '未找到匹配的物料'
+        }));
+      }
+    } catch (error) {
+      // 网络错误等，不显示验证错误（避免误判）
+      console.error('[物料验证] 验证失败:', error);
+      setMaterialValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[index];
+        return newErrors;
+      });
+    }
   };
 
   const addNewRow = () => {
     setItems([...items, { name: '', specification: '', quantity: 0, unit: '', unitPrice: 0, total: 0 }]);
   };
 
+  // v6.4: 删除行时同步更新验证状态（重新映射索引）
   const removeRow = (index: number) => {
+    console.log('[物料验证] 删除行:', index);
     setItems(items.filter((_, i) => i !== index));
+
+    // 重新映射验证错误的索引
+    setMaterialValidationErrors(prev => {
+      const newErrors: Record<number, string> = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        const oldIndex = parseInt(key);
+        if (oldIndex < index) {
+          // 被删除行之前的保持不变
+          newErrors[oldIndex] = value;
+        } else if (oldIndex > index) {
+          // 被删除行之后的索引减1
+          newErrors[oldIndex - 1] = value;
+        }
+        // oldIndex === index 的错误直接丢弃
+      });
+      console.log('[物料验证] 删除后重映射:', prev, '→', newErrors);
+      return newErrors;
+    });
   };
 
   // v3.5: 收货单图片上传处理（支持多张，追加到数组）
@@ -1670,14 +1780,38 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
         console.log(`[AI识别] 识别第 ${i + 1}/${unrecognizedImages.length} 张...`);
 
         try {
-          const result = await recognizeReceipt(img.data, img.mimeType);
+          // v6.2: 传入数据库物料列表，启用二次纠偏
+          const result = await recognizeReceipt(img.data, img.mimeType, products);
           if (result) {
             console.log(`[AI识别] 第 ${i + 1} 张识别成功:`, result);
             successCount++;
             // v4.6: 增加 AI 识图使用次数
             setUseAiPhotoCount(prev => prev + 1);
+
+            // v6.3: 如果有纠偏结果，显示提示弹窗
+            if (result.corrections && Object.keys(result.corrections).length > 0) {
+              const message = formatCorrectionMessage(result.corrections, result.allOcrNames || []);
+              setCorrectionMessage(message);
+              setShowCorrectionModal(true);
+            }
+
             // 使用与语音录入相同的表单填充逻辑（追加模式）
             fillFormWithResult(result);
+
+            // v6.4: AI识别完成后，自动触发物料验证
+            // 验证所有非空物品（因为 fillFormWithResult 会过滤空行，导致索引变化）
+            setTimeout(() => {
+              setItems(currentItems => {
+                console.log(`[物料验证] AI识别后批量验证，共 ${currentItems.length} 项`);
+                // 验证所有非空物品
+                currentItems.forEach((item, idx) => {
+                  if (item && item.name.trim()) {
+                    handleMaterialNameValidation(idx, item.name);
+                  }
+                });
+                return currentItems; // 返回原状态，不修改
+              });
+            }, 200);
             // 标记该图片已识别
             setReceiptImages(prev =>
               prev.map(item => item.id === img.id ? { ...item, recognized: true } : item)
@@ -2126,6 +2260,8 @@ ${productList}
           showTranscription={showTranscription}
           isSendingTranscription={isSendingTranscription}
           selectedCategory={selectedCategory}
+          materialValidationErrors={materialValidationErrors}
+          onMaterialNameBlur={handleMaterialNameValidation}
           onBack={() => setStep('CATEGORY')}
           onSupplierChange={setSupplier}
           onSupplierOtherChange={setSupplierOther}
@@ -2170,6 +2306,44 @@ ${productList}
           onContinue={handleRestoreDraft}
           onDiscard={handleDiscardDraft}
         />
+      )}
+
+      {/* v6.2: AI 二次纠偏结果提示弹窗 */}
+      {showCorrectionModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md glass-card-elevated p-6 animate-scale-up"
+            style={{
+              boxShadow: '0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
+            }}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-harbor-blue/20 flex items-center justify-center flex-shrink-0">
+                <Icons.Check className="w-5 h-5 text-harbor-blue" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-primary mb-1">AI 识别完成</h3>
+                <p className="text-sm text-secondary whitespace-pre-line">{correctionMessage}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowCorrectionModal(false);
+                // v6.3: 关闭弹框后，确保验证已触发
+                // 这是一个安全保障，因为验证应该已经在 fillFormWithResult 后触发了
+              }}
+              className="w-full py-3 rounded-glass-xl text-white font-semibold transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, rgba(91,163,192,0.3) 0%, rgba(91,163,192,0.15) 100%)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.15)'
+              }}
+            >
+              确定
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

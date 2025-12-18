@@ -1,8 +1,9 @@
 /**
  * 自动完成输入框组件
- * v4.1 - 修复 backdrop-filter 层叠上下文导致下拉框被遮挡问题
+ * v4.2 - 添加自定义 onBlurCustom 回调，支持失焦时的外部验证逻辑
  *
  * 变更历史：
+ * - v4.2: 新增 onBlurCustom 属性，支持自定义 blur 回调（用于物料名称验证）
  * - v4.1: 下拉框打开时给容器添加 isolate + z-[9999]，
  *         解决 glass-card 的 backdrop-filter 创建层叠上下文导致 z-index 失效的问题
  * - v4.0: 所有变体统一使用 absolute 定位，移除 Portal；
@@ -72,6 +73,8 @@ export interface AutocompleteInputProps {
   getAllOptionsFn?: () => Promise<AutocompleteOption[]>;
   /** v3.3: 严格选择模式 - 只能从下拉列表选择，不允许自由输入 */
   strictSelection?: boolean;
+  /** v4.2: 自定义 onBlur 回调（在内部 blur 处理之后执行） */
+  onBlurCustom?: (value: string) => void;
 }
 
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
@@ -92,6 +95,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   showDropdownButton = false,
   getAllOptionsFn,
   strictSelection = false,
+  onBlurCustom,
 }) => {
   // 内部状态
   const [isOpen, setIsOpen] = useState(false);
@@ -300,6 +304,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   // v3.3: 失去焦点时，如果是严格模式且值不是通过选择获得的，恢复到最后有效值
   // 使用延迟执行避免与点击下拉选项的竞态条件
   // v3.5: 如果正在与下拉框交互，不触发恢复逻辑
+  // v4.2: 支持自定义 onBlurCustom 回调
   const handleBlur = useCallback(() => {
     setTimeout(() => {
       // v3.5: 如果正在与下拉框交互（触摸滑动中），跳过恢复检查
@@ -314,8 +319,13 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       }
       // 重置选择标记
       isValueFromSelection.current = false;
+
+      // v4.2: 执行自定义 onBlur 回调
+      if (onBlurCustom) {
+        onBlurCustom(value);
+      }
     }, 150);  // 150ms 延迟，确保 click 事件先处理
-  }, [strictSelection, value, lastValidValue, onChange]);
+  }, [strictSelection, value, lastValidValue, onChange, onBlurCustom]);
 
   // v3.0: 下拉按钮点击 - 展开全部选项
   // v3.3: 使用 onMouseDown 阻止 blur 事件触发恢复逻辑

@@ -1,4 +1,5 @@
 // 收货单图片识别服务
+// v3.0 - 添加二次纠偏层：基于文字图像相似性纠正OCR错误（如"天蒜"→"大蒜"）
 // v2.1 - JSON 解析失败时抛出带 AI 响应的错误，让用户看到智能提示
 // v2.0 - 统一使用 husanai OpenAI 兼容 API + gemini-2.5-flash-image 模型
 // v1.1 - 将 Gemini API Key 改为环境变量
@@ -6,6 +7,8 @@
 // 返回与语音录入相同的 VoiceEntryResult 格式，复用表单填充逻辑
 
 import { ProcurementItem } from '../types';
+import { correctMaterialNames, applyCorrections, CorrectionMap } from './materialCorrectionService';
+import type { Product } from './supabaseService';
 
 // 自定义错误：AI 无法提取结构化数据时，携带 AI 的原始回复
 export class RecognitionParseError extends Error {
@@ -24,10 +27,13 @@ const HUSANAI_API_URL = 'https://husanai.com/v1/chat/completions';
 const VISION_MODEL = 'gemini-2.5-flash-image';
 
 // 识别结果 - 与 VoiceEntryResult 结构一致，复用表单填充逻辑
+// v6.3: 添加 allOcrNames 用于 UI 显示完整信息
 export interface ReceiptRecognitionResult {
   supplier: string;
   notes: string;
   items: ProcurementItem[];
+  corrections?: CorrectionMap; // v3.0: 纠偏映射表（可选）
+  allOcrNames?: string[];      // v6.3: 所有 OCR 识别的物料名
 }
 
 // 收货单识别提示词 - 针对中文收货单/送货单优化
@@ -78,14 +84,21 @@ const RECEIPT_RECOGNITION_PROMPT = `你是一个专业的收货单/送货单识�
 5. 如果是手写单据，请仔细辨认字迹`;
 
 /**
- * 识别收货单图片
+ * 识别收货单图片（含二次纠偏层）
+ *
+ * v3.0 - 添加二次纠偏：
+ * 1. 第一层：OCR 识别收货单图片
+ * 2. 第二层：比对数据库物料名，使用 Gemini 纠正 OCR 错误（基于文字图像相似性）
+ *
  * @param imageBase64 - 图片的 base64 编码（不包含 data:image/xxx;base64, 前缀）
  * @param mimeType - 图片 MIME 类型（如 image/jpeg, image/png）
+ * @param databaseMaterials - 数据库物料列表（用于纠偏）
  * @returns 识别结果或 null（失败时）
  */
 export async function recognizeReceipt(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  databaseMaterials?: Product[]
 ): Promise<ReceiptRecognitionResult | null> {
   // v2.0: 检查 Husanai API Key 是否配置
   if (!HUSANAI_API_KEY) {
@@ -159,8 +172,37 @@ export async function recognizeReceipt(
 
     // 验证和修正数据
     const validated = validateAndFixResult(result);
-    console.log('[收货单识别] 识别完成:', validated);
+    console.log('[收货单识别] 第一层识别完成:', validated);
 
+    // v3.0: 第二层纠偏 - 使用数据库物料列表纠正 OCR 错误
+    if (databaseMaterials && databaseMaterials.length > 0) {
+      console.log('[收货单识别] 开始第二层纠偏，数据库物料总数:', databaseMaterials.length);
+
+      // 提取所有物料名
+      const ocrNames = validated.items.map(item => item.name);
+
+      // 调用纠偏服务
+      const correctionResult = await correctMaterialNames(ocrNames, databaseMaterials);
+
+      if (correctionResult.hasCorrections) {
+        console.log('[收货单识别] 纠偏完成，发现错误:', correctionResult.corrections);
+
+        // 应用纠偏到物料列表
+        validated.items = applyCorrections(validated.items, correctionResult.corrections);
+
+        // v6.3: 将纠偏映射表和所有 OCR 名称附加到结果中（供 UI 展示）
+        validated.corrections = correctionResult.corrections;
+        validated.allOcrNames = correctionResult.allOcrNames;
+
+        console.log('[收货单识别] 纠偏后的物料列表:', validated.items);
+      } else {
+        console.log('[收货单识别] 无需纠偏');
+      }
+    } else {
+      console.log('[收货单识别] 未提供数据库物料列表，跳过纠偏');
+    }
+
+    console.log('[收货单识别] 最终识别结果:', validated);
     return validated;
 
   } catch (error) {
