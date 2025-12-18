@@ -1,8 +1,9 @@
 /**
  * 自动完成输入框组件
- * v4.2 - 添加自定义 onBlurCustom 回调，支持失焦时的外部验证逻辑
+ * v4.3 - 修复 onBlurCustom 使用闭包旧值问题，改用 ref 获取最新值
  *
  * 变更历史：
+ * - v4.3: 修复 onBlurCustom 在 setTimeout 中使用闭包旧值的 bug，改用 valueRef 获取最新值
  * - v4.2: 新增 onBlurCustom 属性，支持自定义 blur 回调（用于物料名称验证）
  * - v4.1: 下拉框打开时给容器添加 isolate + z-[9999]，
  *         解决 glass-card 的 backdrop-filter 创建层叠上下文导致 z-index 失效的问题
@@ -108,6 +109,8 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const isValueFromSelection = useRef(false);
   // v3.5: 追踪用户是否正在与下拉框交互（触摸滑动中）
   const isInteractingWithDropdown = useRef(false);
+  // v4.3: 追踪最新的 value，用于 setTimeout 中获取最新值
+  const valueRef = useRef(value);
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -292,6 +295,11 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     }
   }, [value, lastValidValue]);
 
+  // v4.3: 保持 valueRef 与 value 同步，用于 setTimeout 中获取最新值
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
   // 聚焦时显示缓存选项
   const handleFocus = useCallback(() => {
     // v3.3: 聚焦时重置选择标记
@@ -305,15 +313,19 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   // 使用延迟执行避免与点击下拉选项的竞态条件
   // v3.5: 如果正在与下拉框交互，不触发恢复逻辑
   // v4.2: 支持自定义 onBlurCustom 回调
+  // v4.3: 使用 valueRef.current 获取最新值，修复闭包旧值问题
   const handleBlur = useCallback(() => {
     setTimeout(() => {
       // v3.5: 如果正在与下拉框交互（触摸滑动中），跳过恢复检查
       if (isInteractingWithDropdown.current) {
         return;
       }
+      // v4.3: 使用 ref 获取最新值
+      const currentValue = valueRef.current;
+
       if (strictSelection && !isValueFromSelection.current) {
         // 如果当前值不等于最后有效值，则恢复
-        if (value !== lastValidValue) {
+        if (currentValue !== lastValidValue) {
           onChange(lastValidValue);
         }
       }
@@ -321,11 +333,12 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       isValueFromSelection.current = false;
 
       // v4.2: 执行自定义 onBlur 回调
+      // v4.3: 使用 currentValue（来自 ref）确保是最新值
       if (onBlurCustom) {
-        onBlurCustom(value);
+        onBlurCustom(currentValue);
       }
     }, 150);  // 150ms 延迟，确保 click 事件先处理
-  }, [strictSelection, value, lastValidValue, onChange, onBlurCustom]);
+  }, [strictSelection, lastValidValue, onChange, onBlurCustom]);
 
   // v3.0: 下拉按钮点击 - 展开全部选项
   // v3.3: 使用 onMouseDown 阻止 blur 事件触发恢复逻辑
