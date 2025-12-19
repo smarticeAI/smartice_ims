@@ -1604,7 +1604,6 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
       const nameValue = value as string;
       if (nameValue.trim()) {
         validationDebounceRef.current[index] = setTimeout(() => {
-          console.log(`[物料验证] 防抖触发 index=${index}, name="${nameValue}"`);
           handleMaterialNameValidation(index, nameValue);
         }, 500);  // 500ms 防抖
       }
@@ -1647,14 +1646,10 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
     });
   };
 
-  // v6.4: 验证物料名称是否存在于数据库（onBlur 时触发）
-  // 添加详细 debug log，修复验证逻辑
+  // v6.5: 验证物料名称是否存在于数据库（防抖触发 + onBlur 兜底）
   const handleMaterialNameValidation = async (index: number, materialName: string) => {
-    console.log(`[物料验证] 开始验证 index=${index}, name="${materialName}"`);
-
     // 如果名称为空，清除错误
     if (!materialName.trim()) {
-      console.log(`[物料验证] index=${index} 名称为空，清除错误`);
       setMaterialValidationErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[index];
@@ -1665,21 +1660,17 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
 
     // 使用 exactMatchProduct 验证名称是否存在（支持别名匹配）
     try {
-      console.log(`[物料验证] index=${index} 调用 exactMatchProduct("${materialName.trim()}")`);
       const product = await exactMatchProduct(materialName.trim());
-      console.log(`[物料验证] index=${index} 验证结果:`, product ? `找到 "${product.name}"` : '未找到');
 
       if (product) {
         // 找到匹配，清除错误
         setMaterialValidationErrors(prev => {
           const newErrors = { ...prev };
           delete newErrors[index];
-          console.log(`[物料验证] index=${index} 匹配成功，清除错误`);
           return newErrors;
         });
       } else {
         // 未找到匹配，设置错误
-        console.log(`[物料验证] index=${index} 未匹配，设置错误`);
         setMaterialValidationErrors(prev => ({
           ...prev,
           [index]: '未找到匹配的物料'
@@ -1702,7 +1693,6 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
 
   // v6.4: 删除行时同步更新验证状态（重新映射索引）
   const removeRow = (index: number) => {
-    console.log('[物料验证] 删除行:', index);
     setItems(items.filter((_, i) => i !== index));
 
     // 重新映射验证错误的索引
@@ -1711,15 +1701,11 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
       Object.entries(prev).forEach(([key, value]) => {
         const oldIndex = parseInt(key);
         if (oldIndex < index) {
-          // 被删除行之前的保持不变
           newErrors[oldIndex] = value;
         } else if (oldIndex > index) {
-          // 被删除行之后的索引减1
           newErrors[oldIndex - 1] = value;
         }
-        // oldIndex === index 的错误直接丢弃
       });
-      console.log('[物料验证] 删除后重映射:', prev, '→', newErrors);
       return newErrors;
     });
   };
@@ -1818,7 +1804,6 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
             // 验证所有非空物品（因为 fillFormWithResult 会过滤空行，导致索引变化）
             setTimeout(() => {
               setItems(currentItems => {
-                console.log(`[物料验证] AI识别后批量验证，共 ${currentItems.length} 项`);
                 // 验证所有非空物品
                 currentItems.forEach((item, idx) => {
                   if (item && item.name.trim()) {
