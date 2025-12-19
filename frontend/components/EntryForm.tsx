@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v6.6 - 语音功能暂时禁用：底部语音录入栏隐藏，移除底部预留空间 (pb-40 → pb-8)
 // v6.5 - 物料名称输入防抖验证：用户停止输入 500ms 后自动验证，不再依赖 onBlur
 // v6.4 - 修复验证问题：删除行时重映射索引，AI识别后验证所有物品，日志前缀改为[表单填充]
 // v6.3 - 修复物料名称验证问题：手动修改名称时立即清除 productId 和验证错误，确保 onBlur 时重新验证
@@ -463,7 +464,7 @@ const WorksheetScreen: React.FC<{
          </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pb-40 space-y-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pb-8 space-y-6">
 
         {/* Info Section - Card Layer */}
         {/* v3.6: 调整顺序 - 图片上传在前，供应商/备注在后，避免AI识别覆盖用户输入 */}
@@ -863,7 +864,8 @@ const WorksheetScreen: React.FC<{
       </div>
 
       {/* v5.0: 员工餐模式下隐藏语音录入栏 */}
-      {!isStaffMealMode && (
+      {/* v6.6: 语音功能暂时禁用 - 无人使用 */}
+      {false && !isStaffMealMode && (
         <>
           {/* Gradient fade overlay above voice bar - creates smooth content fade effect */}
           <div
