@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v6.7 - 修复总价计算错误：total 字段从输入框获取时是字符串，reduce 相加变成拼接而非求和
 // v6.6 - 语音功能暂时禁用：底部语音录入栏隐藏，移除底部预留空间 (pb-40 → pb-8)
 // v6.5 - 物料名称输入防抖验证：用户停止输入 500ms 后自动验证，不再依赖 onBlur
 // v6.4 - 修复验证问题：删除行时重映射索引，AI识别后验证所有物品，日志前缀改为[表单填充]
@@ -1620,8 +1621,10 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
       updatedItem.total = Math.round(q * p * 100) / 100;
     } else if (field === 'total') {
       // 总价变化 → 反算单价（四舍五入到2位小数）
+      // v6.7: 确保 total 存储为数字类型（输入框返回字符串）
       const q = parseFloat(updatedItem.quantity as any) || 0;
       const t = parseFloat(updatedItem.total as any) || 0;
+      updatedItem.total = t;  // 确保 total 是数字
       if (q > 0) {
         updatedItem.unitPrice = Math.round((t / q) * 100) / 100;
       }
@@ -1929,7 +1932,8 @@ export const EntryForm: React.FC<EntryFormProps> = ({ onSave, userName, userNick
     voiceEntryService.stopRecording();
   };
 
-  const calculateGrandTotal = () => items.reduce((acc, curr) => acc + curr.total, 0);
+  // v6.7: 修复总价计算 - 确保 total 是数字类型（输入框返回字符串导致拼接而非相加）
+  const calculateGrandTotal = () => items.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
 
   const handleWorksheetSubmit = async () => {
     // v4.1: 完整表单验证 - 图片、供应商、物品、单位、产品名称
