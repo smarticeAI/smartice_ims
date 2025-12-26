@@ -1,10 +1,14 @@
 /**
  * IndexedDB 存储服务
+ * v1.4 - 添加存储空间检查函数 checkStorageAvailable
+ * v1.3 - 添加打开数据库超时机制（防止页面空白）
  * v1.2 - 移除日常操作日志，只保留错误日志
  * v1.1 - 添加详细日志 + 存储大小估算
  * v1.0 - 替代 localStorage，解决 5MB 容量限制问题
  *
  * 变更历史：
+ * - v1.4: 添加 checkStorageAvailable 函数，提交前检查存储空间是否充足
+ * - v1.3: 添加 5 秒超时机制，防止 IndexedDB 打开失败时页面空白
  * - v1.2: 移除频繁的日常操作日志（保存成功等），只保留错误日志
  * - v1.1: 添加详细日志便于调试，新增 getStorageEstimate 函数
  * - v1.0: 初始版本，支持队列数据持久化
@@ -13,11 +17,13 @@
  * - 提供类似 localStorage 的简单 API
  * - 支持大容量存储（通常为磁盘空间的 50%）
  * - 自动处理数据库初始化和升级
+ * - 存储空间检查和预警
  */
 
 const DB_NAME = 'smartice_inventory';
 const DB_VERSION = 1;
 const STORE_NAME = 'upload_queue';
+const DB_OPEN_TIMEOUT_MS = 5000; // v1.3: 数据库打开超时时间
 
 // ============ 数据库初始化 ============
 
@@ -25,6 +31,7 @@ let dbInstance: IDBDatabase | null = null;
 
 /**
  * 获取数据库实例（懒加载 + 单例）
+ * v1.3: 添加超时机制，防止永久挂起
  */
 async function getDB(): Promise<IDBDatabase> {
   if (dbInstance) {
@@ -32,28 +39,47 @@ async function getDB(): Promise<IDBDatabase> {
   }
 
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    // v1.3: 超时处理
+    const timeoutId = setTimeout(() => {
+      console.error('[IndexedDB] 打开数据库超时（5秒），回退到 localStorage');
+      reject(new Error('IndexedDB 打开超时'));
+    }, DB_OPEN_TIMEOUT_MS);
 
-    request.onerror = () => {
-      console.error('[IndexedDB] 打开数据库失败:', request.error);
-      reject(new Error('IndexedDB 不可用'));
-    };
+    try {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onsuccess = () => {
-      dbInstance = request.result;
-      // v1.2: 移除日常连接日志
-      resolve(dbInstance);
-    };
+      request.onerror = () => {
+        clearTimeout(timeoutId);
+        console.error('[IndexedDB] 打开数据库失败:', request.error);
+        reject(new Error('IndexedDB 不可用'));
+      };
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
+      request.onsuccess = () => {
+        clearTimeout(timeoutId);
+        dbInstance = request.result;
+        resolve(dbInstance);
+      };
 
-      // 创建对象存储（类似表）
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-        // v1.2: 移除创建存储日志（只发生一次）
-      }
-    };
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+
+        // 创建对象存储（类似表）
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+        }
+      };
+
+      // v1.3: 处理被阻塞的情况（其他标签页打开了旧版本）
+      request.onblocked = () => {
+        clearTimeout(timeoutId);
+        console.error('[IndexedDB] 数据库被阻塞，请关闭其他标签页');
+        reject(new Error('IndexedDB 被阻塞'));
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error('[IndexedDB] 打开数据库异常:', error);
+      reject(new Error('IndexedDB 打开异常'));
+    }
   });
 }
 
@@ -220,4 +246,65 @@ export async function getStorageEstimate(): Promise<{ usage: number; quota: numb
   }
   // v1.2: 移除不支持 API 的警告日志
   return null;
+}
+
+/**
+ * v1.4: 检查存储空间是否充足
+ * @param requiredMB 需要的空间（MB），默认 10MB
+ * @returns true=空间充足，false=空间不足
+ */
+export async function checkStorageAvailable(requiredMB: number = 10): Promise<boolean> {
+  const estimate = await getStorageEstimate();
+  if (!estimate) {
+    // 无法获取存储信息时，假设空间充足
+    return true;
+  }
+
+  const availableMB = (estimate.quota - estimate.usage) / 1024 / 1024;
+  const isAvailable = availableMB >= requiredMB;
+
+  if (!isAvailable) {
+    console.warn(`[IndexedDB] 存储空间不足: 剩余 ${availableMB.toFixed(1)}MB，需要 ${requiredMB}MB`);
+  }
+
+  return isAvailable;
+}
+
+/**
+ * v1.3: 删除并重建数据库（用于修复损坏的数据库）
+ * 注意：这会删除所有本地队列数据！
+ */
+export async function resetDatabase(): Promise<boolean> {
+  try {
+    // 关闭现有连接
+    if (dbInstance) {
+      dbInstance.close();
+      dbInstance = null;
+    }
+
+    // 删除数据库
+    return new Promise((resolve) => {
+      const request = indexedDB.deleteDatabase(DB_NAME);
+
+      request.onsuccess = () => {
+        console.log('[IndexedDB] 数据库已重置');
+        // 同时清除 localStorage 中的旧数据
+        localStorage.removeItem('upload_queue');
+        resolve(true);
+      };
+
+      request.onerror = () => {
+        console.error('[IndexedDB] 重置数据库失败:', request.error);
+        resolve(false);
+      };
+
+      request.onblocked = () => {
+        console.warn('[IndexedDB] 重置被阻塞，请关闭其他标签页后重试');
+        resolve(false);
+      };
+    });
+  } catch (error) {
+    console.error('[IndexedDB] 重置数据库异常:', error);
+    return false;
+  }
 }

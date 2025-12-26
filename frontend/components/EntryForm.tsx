@@ -1,4 +1,5 @@
 // EntryForm - 采购录入表单
+// v6.8 - 修复内存不足问题：提交前先清除草稿，避免草稿+队列双份存储导致 IndexedDB 空间耗尽
 // v6.7 - 修复总价计算错误：total 字段从输入框获取时是字符串，reduce 相加变成拼接而非求和
 // v6.6 - 语音功能暂时禁用：底部语音录入栏隐藏，移除底部预留空间 (pb-40 → pb-8)
 // v6.5 - 物料名称输入防抖验证：用户停止输入 500ms 后自动验证，不再依赖 onBlur
@@ -2138,16 +2139,17 @@ ${productList}
     // v5.2: 传递 brand_id 用于新建供应商时绑定品牌
     // v5.7: 添加 try-catch 处理队列写入失败
     // v5.9: addToUploadQueue 现在是异步函数（使用 IndexedDB）
+    // v6.1: 提交前先清除草稿，避免双份存储导致内存不足
     if (storeId && employeeId) {
       try {
+        // v6.1: 先清除草稿，释放存储空间（避免草稿+队列双份存储）
+        await clearDraft();
+
         const queueId = await addToUploadQueue(logData, storeId, employeeId, aiUsage, user?.brand_id);
         if (!queueId) {
           throw new Error('队列写入失败');
         }
         console.log(`[队列] 任务已加入队列: ${queueId}, brand_id: ${user?.brand_id}`);
-
-        // v5.9: 提交成功后清除草稿（异步）
-        await clearDraft();
 
         // 显示成功提示
         setSubmitProgress('success');

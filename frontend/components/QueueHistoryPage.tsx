@@ -1,5 +1,6 @@
 /**
  * QueueHistoryPage - 采购记录页面
+ * v4.9 - 修复空白页问题：useEffect 依赖修复 + 错误状态显示 + 重试按钮
  * v4.8 - 显示上传成功状态（修复成功后立即消失的bug）
  * v4.7 - 一次性加载全部记录，移除分页（解决聚合显示不完整的问题）
  * v4.6 - 添加日期筛选器（今天/本周/本月/全部）+ 聚合显示优化
@@ -70,6 +71,8 @@ export const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ onBack }) =>
   // 数据库历史状态
   const [history, setHistory] = useState<ProcurementHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  // v4.9: 添加错误状态，便于用户排查问题
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // v4.5: 日期筛选状态
   const [dateFilter, setDateFilter] = useState<DateFilterType>('today');
@@ -91,46 +94,39 @@ export const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ onBack }) =>
     return () => unsubscribe();
   }, []);
 
-  // v4.7: 一次性加载全部历史记录（按门店和日期过滤）
-  const loadHistory = useCallback(async (filter: DateFilterType = dateFilter) => {
-    if (loadingHistory) return;
+  // v4.9: 加载历史记录（修复依赖问题）
+  const loadHistory = useCallback(async (filter: DateFilterType, currentStoreId?: string) => {
+    // v4.9: 使用传入的参数，避免闭包捕获旧值
     setLoadingHistory(true);
+    setLoadError(null);
 
     try {
       // 一次性加载全部记录（pageSize=1000足够覆盖一个月的数据）
-      const result = await getProcurementHistory(0, 1000, storeId, filter);
-      console.log(`[初始加载] ${filter} 返回 ${result.data.length} 条记录`);
+      const result = await getProcurementHistory(0, 1000, currentStoreId, filter);
+      console.log(`[初始加载] ${filter} 返回 ${result.data.length} 条记录, storeId: ${currentStoreId}`);
       setHistory(result.data);
     } catch (error) {
-      console.error('加载历史记录失败:', error);
+      const errorMsg = error instanceof Error ? error.message : '未知错误';
+      console.error('加载历史记录失败:', errorMsg);
+      setLoadError(`加载失败: ${errorMsg}`);
+      setHistory([]);
     } finally {
       setLoadingHistory(false);
     }
-  }, [loadingHistory, storeId, dateFilter]);
+  }, []); // v4.9: 移除依赖，使用参数传递
 
-  // 初始加载历史记录
+  // v4.9: 初始加载 + storeId 变化时重新加载
   useEffect(() => {
-    loadHistory();
-  }, []);
+    loadHistory(dateFilter, storeId);
+  }, [storeId, loadHistory]);
 
-  // v4.7: 切换筛选器时一次性加载全部记录
+  // v4.9: 切换筛选器
   const handleFilterChange = async (filter: DateFilterType) => {
     console.log(`[筛选器] 切换到: ${filter}, storeId: ${storeId}`);
     setDateFilter(filter);
     setShowFilterDropdown(false);
     setHistory([]);
-    setLoadingHistory(true);
-
-    try {
-      // 一次性加载全部记录（pageSize=1000足够覆盖一个月的数据）
-      const result = await getProcurementHistory(0, 1000, storeId, filter);
-      console.log(`[筛选器] ${filter} 返回 ${result.data.length} 条记录`);
-      setHistory(result.data);
-    } catch (error) {
-      console.error('加载历史记录失败:', error);
-    } finally {
-      setLoadingHistory(false);
-    }
+    await loadHistory(filter, storeId);
   };
 
   // v4.5: 点击外部关闭下拉菜单
@@ -346,7 +342,25 @@ export const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ onBack }) =>
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto px-6 pb-6"
       >
-        {unifiedRecords.length === 0 && !loadingHistory ? (
+        {/* v4.9: 错误状态显示 */}
+        {loadError && (
+          <div className="mb-4 p-4 rounded-glass-lg border border-ios-red/30" style={{ background: 'rgba(232, 90, 79, 0.15)' }}>
+            <div className="flex items-start gap-3">
+              <Icons.X className="w-5 h-5 text-ios-red flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-ios-red mb-1">加载失败</p>
+                <p className="text-sm text-white/80 mb-3">{loadError}</p>
+                <button
+                  onClick={() => loadHistory(dateFilter, storeId)}
+                  className="text-sm text-ios-blue hover:underline"
+                >
+                  点击重试
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {unifiedRecords.length === 0 && !loadingHistory && !loadError ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
             <p className="text-muted">
               {dateFilter === 'today' && '今天暂无采购记录'}
