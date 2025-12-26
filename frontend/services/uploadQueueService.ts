@@ -1,10 +1,17 @@
 /**
  * 上传队列服务
+ * v2.5 - 添加取消上传功能，用户可手动中断卡住的上传
+ * v2.4 - 修复"永久上传中"bug：启动时恢复卡住的uploading状态为pending
+ * v2.3 - 重试次数改为1次（原3次），失败后立即在UI显示，方便用户及时处理
  * v2.2 - 添加失败项数量限制，防止短期内大量失败导致存储耗尽
  * v2.1 - 修复内存问题：过期清理 + 成功立即删除 + 存储空间管理
  * v2.0 - 使用 IndexedDB 替代 localStorage，实现原子事务
  *
  * 变更历史：
+ * - v2.5: 添加 cancelUpload 方法，用户可手动取消卡住的上传项
+ * - v2.4: 修复"永久上传中"bug - 用户关闭app时item可能卡在uploading状态
+ *         启动时检测超过2分钟的uploading项，重置为pending重新上传
+ * - v2.3: 重试次数从3次改为1次，失败后更快暴露问题，便于用户手动处理
  * - v2.2: 添加失败项数量限制（最多保留10个），紧急清理机制
  *         即使未过期，超出数量也会删除最旧的失败项
  * - v2.1: 修复内存不足问题：
@@ -54,12 +61,13 @@ export type QueueChangeCallback = (queue: QueueItem[]) => void;
 
 const STORAGE_KEY = 'upload_queue';
 const LEGACY_STORAGE_KEY = 'upload_queue';  // localStorage 旧数据迁移用
-const MAX_RETRY_COUNT = 3;
+const MAX_RETRY_COUNT = 1;  // v2.3: 改为重试1次后就标记失败（原为3次）
 const RETRY_DELAY_MS = 2000;           // 重试延迟 2 秒
 const PROCESS_INTERVAL_MS = 3000;      // 处理队列间隔 3 秒
 const FAILED_EXPIRE_DAYS = 3;          // v2.1: 失败项保留天数（超过后自动清理）
 const FAILED_EXPIRE_MS = FAILED_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
 const MAX_FAILED_ITEMS = 10;           // v2.2: 失败项最大保留数量（超出则删除最旧的）
+const STUCK_UPLOADING_MS = 2 * 60 * 1000;  // v2.4: 超过2分钟的uploading视为卡住
 
 // ============ 队列管理器 ============
 
@@ -77,9 +85,16 @@ class UploadQueueManager {
 
   /**
    * v2.1: 异步初始化（添加过期清理）
+   * v2.4: 添加卡住的 uploading 记录重置
    */
   private async initialize() {
     await this.loadQueue();
+
+    // v2.4: 启动时重置卡住的 uploading 记录
+    const resetCount = await this.resetStuckUploadingItems();
+    if (resetCount > 0) {
+      console.log(`[队列 v2.4] 启动时重置了 ${resetCount} 个卡住的上传项`);
+    }
 
     // v2.1: 启动时清理过期的失败项
     await this.cleanupExpiredItems();
@@ -289,6 +304,35 @@ class UploadQueueManager {
   }
 
   /**
+   * v2.5: 取消正在上传的队列项（用户手动中断）
+   * 将 uploading 状态重置为 pending，下次自动重试
+   */
+  async cancelUpload(id: string): Promise<boolean> {
+    const item = this.queue.find(i => i.id === id);
+    if (!item) {
+      console.warn(`[队列] 取消失败: 项不存在 (id: ${id})`);
+      return false;
+    }
+
+    // 允许取消 uploading 和 pending 状态
+    if (item.status !== 'uploading' && item.status !== 'pending') {
+      console.warn(`[队列] 取消失败: 状态不允许取消 (id: ${id}, status: ${item.status})`);
+      return false;
+    }
+
+    // 重置为 pending 状态，等待下次上传
+    item.status = 'pending';
+    item.error = '用户取消上传，等待重试...';
+    item.updatedAt = Date.now();
+
+    await this.saveQueue();
+    this.notifyListeners();
+    console.log(`[队列 v2.5] 用户取消上传: ${id}`);
+
+    return true;
+  }
+
+  /**
    * 修改失败队列项的数据（用于用户编辑后重新提交）
    */
   async updateQueueItemData(id: string, newData: Omit<DailyLog, 'id'>): Promise<boolean> {
@@ -345,10 +389,40 @@ class UploadQueueManager {
   }
 
   /**
+   * v2.4: 重置卡住的 uploading 状态记录
+   * 如果记录在 uploading 状态超过 2 分钟，视为卡住，重置为 pending
+   */
+  private async resetStuckUploadingItems(): Promise<number> {
+    const now = Date.now();
+    let resetCount = 0;
+
+    for (const item of this.queue) {
+      if (item.status === 'uploading' && (now - item.updatedAt) > STUCK_UPLOADING_MS) {
+        console.log(`[队列 v2.4] 检测到卡住的上传项: ${item.id} (已卡住 ${Math.round((now - item.updatedAt) / 1000 / 60)} 分钟)`);
+        item.status = 'pending';
+        item.updatedAt = now;
+        item.error = '上传中断，正在重试...';
+        resetCount++;
+      }
+    }
+
+    if (resetCount > 0) {
+      await this.saveQueue();
+      this.notifyListeners();
+      console.log(`[队列 v2.4] 已重置 ${resetCount} 个卡住的上传项`);
+    }
+
+    return resetCount;
+  }
+
+  /**
    * 处理队列
    */
   private async processQueue() {
     if (this.isProcessing) return;
+
+    // v2.4: 先检查并重置卡住的 uploading 记录
+    await this.resetStuckUploadingItems();
 
     const pendingItems = this.queue.filter(item => item.status === 'pending');
     if (pendingItems.length === 0) return;

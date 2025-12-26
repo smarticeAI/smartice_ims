@@ -1,5 +1,6 @@
 /**
  * QueueHistoryPage - 采购记录页面
+ * v5.0 - 添加取消上传功能：用户可手动取消卡住的"上传中"记录
  * v4.9 - 修复空白页问题：useEffect 依赖修复 + 错误状态显示 + 重试按钮
  * v4.8 - 显示上传成功状态（修复成功后立即消失的bug）
  * v4.7 - 一次性加载全部记录，移除分页（解决聚合显示不完整的问题）
@@ -203,6 +204,11 @@ export const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ onBack }) =>
     }
   };
 
+  // v5.0: 取消上传中的队列项
+  const handleCancelUpload = (id: string) => {
+    uploadQueueService.cancelUpload(id);
+  };
+
   // v4.5: 删除历史记录（支持批量删除聚合记录）
   const handleDeleteHistory = async (items: ProcurementHistoryItem[]) => {
     const itemCount = items.length;
@@ -388,6 +394,10 @@ export const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ onBack }) =>
                   ? () => handleDeleteQueue((record.original as any)[0].id)
                   : () => handleDeleteHistory(record.original as ProcurementHistoryItem[])
                 }
+                onCancel={record.type === 'queue' && record.status === 'uploading'
+                  ? () => handleCancelUpload((record.original as any)[0].id)
+                  : undefined
+                }
                 formatTime={formatTime}
               />
             ))}
@@ -409,8 +419,9 @@ const RecordCard: React.FC<{
   record: UnifiedRecord;
   onClick: () => void;
   onDelete: () => void;
+  onCancel?: () => void;  // v5.0: 取消上传回调
   formatTime: (t: number) => string;
-}> = ({ record, onClick, onDelete, formatTime }) => {
+}> = ({ record, onClick, onDelete, onCancel, formatTime }) => {
   const statusConfig: Record<UnifiedRecord['status'], { color: string; bgColor: string; icon: any; label: string }> = {
     pending: { color: 'text-ios-blue', bgColor: 'bg-ios-blue/10', icon: Icons.Clock, label: '等待上传' },
     uploading: { color: 'text-ios-blue', bgColor: 'bg-ios-blue/10', icon: Icons.ArrowRight, label: '上传中' },
@@ -455,13 +466,25 @@ const RecordCard: React.FC<{
           )}
         </div>
 
-        {/* 删除按钮 */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="w-8 h-8 rounded-full bg-white/5 hover:bg-ios-red/20 flex items-center justify-center text-white/40 hover:text-ios-red transition-colors flex-shrink-0"
-        >
-          <Icons.X className="w-4 h-4" />
-        </button>
+        {/* v5.0: 操作按钮区域 */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* 上传中状态显示取消按钮 */}
+          {isUploading && onCancel && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onCancel(); }}
+              className="px-3 py-1.5 rounded-full bg-ios-orange/20 hover:bg-ios-orange/30 text-ios-orange text-xs font-medium transition-colors"
+            >
+              取消
+            </button>
+          )}
+          {/* 删除按钮 */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-ios-red/20 flex items-center justify-center text-white/40 hover:text-ios-red transition-colors"
+          >
+            <Icons.X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </GlassCard>
   );
