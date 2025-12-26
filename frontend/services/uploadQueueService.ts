@@ -1,9 +1,12 @@
 /**
  * 上传队列服务
+ * v2.2 - 添加失败项数量限制，防止短期内大量失败导致存储耗尽
  * v2.1 - 修复内存问题：过期清理 + 成功立即删除 + 存储空间管理
  * v2.0 - 使用 IndexedDB 替代 localStorage，实现原子事务
  *
  * 变更历史：
+ * - v2.2: 添加失败项数量限制（最多保留10个），紧急清理机制
+ *         即使未过期，超出数量也会删除最旧的失败项
  * - v2.1: 修复内存不足问题：
  *         1. 失败队列超过3天自动清理
  *         2. 成功后立即删除（不再延迟5秒）
@@ -56,6 +59,7 @@ const RETRY_DELAY_MS = 2000;           // 重试延迟 2 秒
 const PROCESS_INTERVAL_MS = 3000;      // 处理队列间隔 3 秒
 const FAILED_EXPIRE_DAYS = 3;          // v2.1: 失败项保留天数（超过后自动清理）
 const FAILED_EXPIRE_MS = FAILED_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
+const MAX_FAILED_ITEMS = 10;           // v2.2: 失败项最大保留数量（超出则删除最旧的）
 
 // ============ 队列管理器 ============
 
@@ -215,28 +219,47 @@ class UploadQueueManager {
   }
 
   /**
-   * v2.1: 清理过期的失败项（超过3天自动删除）
-   * 防止存储空间被长期占用
+   * v2.2: 清理失败项（时间+数量双重限制）
+   * 1. 超过3天的失败项直接删除
+   * 2. 未过期的失败项，只保留最新的 MAX_FAILED_ITEMS 个
+   * 防止存储空间被长期占用或短期内大量堆积
    */
   async cleanupExpiredItems(): Promise<number> {
     const now = Date.now();
+    let totalCleaned = 0;
+
+    // 1. 清理过期的失败项（超过3天）
     const expiredItems = this.queue.filter(item =>
       item.status === 'failed' && (now - item.updatedAt) > FAILED_EXPIRE_MS
     );
 
-    if (expiredItems.length === 0) {
-      return 0;
+    if (expiredItems.length > 0) {
+      const expiredIds = new Set(expiredItems.map(item => item.id));
+      this.queue = this.queue.filter(item => !expiredIds.has(item.id));
+      totalCleaned += expiredItems.length;
+      console.log(`[队列] 清理过期失败项: ${expiredItems.length} 项（超过 ${FAILED_EXPIRE_DAYS} 天）`);
     }
 
-    // 从队列中移除过期项
-    const expiredIds = new Set(expiredItems.map(item => item.id));
-    this.queue = this.queue.filter(item => !expiredIds.has(item.id));
+    // 2. v2.2: 检查未过期的失败项数量，超出限制则删除最旧的
+    const remainingFailedItems = this.queue
+      .filter(item => item.status === 'failed')
+      .sort((a, b) => b.updatedAt - a.updatedAt);  // 按时间倒序，最新的在前
 
-    await this.saveQueue();
-    this.notifyListeners();
+    if (remainingFailedItems.length > MAX_FAILED_ITEMS) {
+      // 删除超出限制的旧失败项
+      const itemsToRemove = remainingFailedItems.slice(MAX_FAILED_ITEMS);
+      const removeIds = new Set(itemsToRemove.map(item => item.id));
+      this.queue = this.queue.filter(item => !removeIds.has(item.id));
+      totalCleaned += itemsToRemove.length;
+      console.log(`[队列] 清理超限失败项: ${itemsToRemove.length} 项（超过 ${MAX_FAILED_ITEMS} 个限制）`);
+    }
 
-    console.log(`[队列] 清理过期失败项: ${expiredItems.length} 项（超过 ${FAILED_EXPIRE_DAYS} 天）`);
-    return expiredItems.length;
+    if (totalCleaned > 0) {
+      await this.saveQueue();
+      this.notifyListeners();
+    }
+
+    return totalCleaned;
   }
 
   /**
@@ -397,11 +420,14 @@ class UploadQueueManager {
         await this.delay(RETRY_DELAY_MS);
       } else {
         // 达到最大重试次数，标记为失败
-        // v2.1: 失败项会保留在 IndexedDB，但超过3天后自动清理
+        // v2.2: 失败项会保留在 IndexedDB，但受双重限制（3天过期 + 最多10个）
         item.status = 'failed';
         item.error = errorMessage;
         item.updatedAt = Date.now();
-        console.error(`[队列] 标记为失败（${FAILED_EXPIRE_DAYS}天后自动清理）: ${item.id}`);
+        console.error(`[队列] 标记为失败: ${item.id}`);
+
+        // v2.2: 失败后立即检查是否需要清理（防止短期内大量堆积）
+        await this.cleanupExpiredItems();
       }
     }
 
