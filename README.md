@@ -1,0 +1,129 @@
+# 🐱 野百灵数据录入系统 (SmartICE IMS)
+
+> 喵～欢迎来到有点东西餐饮管理有限公司的数据录入系统喵！这里可以手动录入也可以用语音录入哦～超方便的喵！
+
+---
+
+## ✨ 功能介绍喵～
+
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| 🔐 用户认证 | 用户名/密码登录，支持多角色权限喵～ | ✅ 已完成 |
+| 📝 手动录入 | 手动填写采购清单，简单易用喵！ | ✅ 已完成 |
+| 🎤 语音录入 | 说话就能录入数据，懒猫福音喵～ | ✅ 已完成 |
+| 📊 数据仪表板 | 数据概览和图表，一目了然喵！ | ✅ 已完成 |
+| 👥 权限管理 | 4种角色 RBAC 权限控制喵～ | ✅ 已完成 |
+
+---
+
+## 🛠️ 技术栈喵～
+
+```
+前端喵：React 19 + Vite 6 + TypeScript + Tailwind CSS v4
+后端喵：FastAPI + Python 3.11
+数据库喵：Supabase PostgreSQL
+语音识别喵：讯飞 ASR (实时流式)
+AI 结构化喵：阿里云 Qwen
+```
+
+---
+
+## 📁 项目结构喵～
+
+```
+smartice_ims/
+├── 🎨 frontend/            # React 前端喵～
+│   ├── components/         # UI 组件
+│   ├── services/           # API 服务
+│   └── CLAUDE.md           # 前端文档
+├── 🐍 backend/             # FastAPI 后端喵～
+│   ├── app/routes/         # API 路由
+│   ├── app/services/       # 业务服务
+│   └── CLAUDE.md           # 后端文档
+├── 🗄️ supabase/            # 数据库喵～
+│   ├── migrations/         # SQL 迁移
+│   └── SCHEMA.md           # Schema 文档
+└── ☁️ keep-alive-worker/   # Cloudflare 保活服务喵～
+```
+
+---
+
+## 🚀 快速开始喵！
+
+### 前端启动喵～
+
+```bash
+cd frontend
+npm install
+npm run dev          # 喵～打开 http://localhost:3000
+```
+
+### 后端启动喵～（语音录入需要哦）
+
+```bash
+cd backend
+uv sync
+cp .env.example .env  # 记得填 API Keys 喵！
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+---
+
+## 🌐 部署架构喵～
+
+```
+┌─────────────────────────────────────────────────┐
+│              ☁️ Cloudflare                      │
+│  ┌──────────────┐    ┌────────────────────┐    │
+│  │ 🎨 Pages     │    │ ⏰ Worker          │    │
+│  │ 前端静态托管  │    │ 每3分钟喵一下后端  │    │
+│  └──────┬───────┘    └────────┬───────────┘    │
+└─────────┼──────────────────────┼────────────────┘
+          │                      │
+          ↓                      ↓
+   ┌──────────────┐      ┌──────────────┐
+   │ 🗄️ Supabase  │      │ 🐍 Render    │
+   │  PostgreSQL  │      │  WebSocket   │
+   │  数据存储喵～ │      │ 语音服务喵～  │
+   └──────────────┘      └──────────────┘
+```
+
+| 服务 | 平台 | 地址喵～ |
+|------|------|----------|
+| 前端 | Cloudflare Pages | https://inv.smartice.ai |
+| 后端 | Render | https://inventoryentryofsmartice.onrender.com |
+| 数据库 | Supabase | wdpeoyugsxqnpwwtkqsl.supabase.co |
+
+---
+
+## 🎨 UI 设计喵～
+
+本喵用的是 **Storm Glass Glassmorphism** 风格喵！
+
+- 🌑 深色毛玻璃背景
+- ✨ 白色高光边框
+- 🌫️ 多层次模糊效果
+- 🌅 云海日落背景图
+
+超级好看的喵～！
+
+---
+
+## 👥 角色权限喵～
+
+| 角色 | 说明 |
+|------|------|
+| 🦸 super_admin | 超级管理员，什么都能做喵！ |
+| 🏪 store_manager | 店长，管理门店数据喵～ |
+| 👨‍🍳 chef | 厨师，录入采购数据喵～ |
+| 👤 employee | 普通员工喵～ |
+
+---
+
+## 📝 License
+
+MIT License 喵～随便用喵！
+
+---
+
+> 🐱 喵～如果觉得好用的话，给个 Star 吧喵！
