@@ -1,12 +1,15 @@
 /**
  * Material Name Correction Service
- * v1.1 - AI二次纠偏层：基于文字图像相似性纠正OCR识别错误
+ * v1.2 - AI二次纠偏层：基于文字图像相似性纠正OCR识别错误
  *
  * 功能：
  * 1. 比对识别结果与数据库物料名称（name + aliases）
  * 2. 找出不匹配的物料名
  * 3. 使用 Gemini API 基于"文字图像相似性"纠偏（如"天蒜"→"大蒜"）
  * 4. 返回纠偏映射表
+ *
+ * v1.2 更新：
+ * - 增加 max_tokens 至 8192（从 4096），解决大量物料纠偏时 JSON 被截断问题
  *
  * v1.1 更新：
  * - 增加 max_tokens 至 4096 防止 JSON 响应被截断
@@ -30,12 +33,14 @@ export interface CorrectionMap {
 
 /**
  * 纠偏服务结果
+ * v6.4: 添加 error 字段区分"无需纠偏"和"纠偏失败"
  * v6.3: 添加 allOcrNames 用于 UI 显示完整信息
  */
 export interface CorrectionResult {
   corrections: CorrectionMap; // 纠偏映射表
   hasCorrections: boolean;    // 是否有纠偏
   allOcrNames: string[];      // 所有 OCR 识别的物料名（用于 UI 显示）
+  error?: string;             // 纠偏失败时的错误信息
 }
 
 /**
@@ -188,7 +193,7 @@ export async function correctMaterialNames(
           }
         ],
         temperature: 0.1,
-        max_tokens: 4096, // v1.1: 从 2048 增加到 4096，防止物料数量多时 JSON 被截断
+        max_tokens: 8192, // v1.2: 从 4096 增加到 8192，解决 28+ 物料纠偏时 JSON 被截断问题
         response_format: { type: 'json_object' } // 强制 JSON 输出
       })
     });
@@ -196,7 +201,7 @@ export async function correctMaterialNames(
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[物料纠偏] API 错误:', response.status, errorText);
-      return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames };
+      return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames, error: `API错误: ${response.status}` };
     }
 
     const data = await response.json();
@@ -204,7 +209,7 @@ export async function correctMaterialNames(
 
     if (!generatedText) {
       console.error('[物料纠偏] 无法提取响应文本');
-      return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames };
+      return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames, error: '无法提取AI响应' };
     }
 
     console.log('[物料纠偏] AI 响应:', generatedText);
@@ -213,7 +218,7 @@ export async function correctMaterialNames(
     const result = parseJsonResponse(generatedText);
     if (!result || !result.corrections) {
       console.error('[物料纠偏] JSON 解析失败');
-      return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames };
+      return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames, error: 'JSON解析失败（响应可能被截断）' };
     }
 
     // 5. 保留所有纠偏结果（包括空字符串，表示无法纠正）
@@ -238,7 +243,7 @@ export async function correctMaterialNames(
 
   } catch (error) {
     console.error('[物料纠偏] 纠偏失败:', error);
-    return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames };
+    return { corrections: {}, hasCorrections: false, allOcrNames: ocrNames, error: `纠偏异常: ${error}` };
   }
 }
 

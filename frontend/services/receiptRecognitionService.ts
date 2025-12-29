@@ -1,4 +1,5 @@
 // 收货单图片识别服务
+// v4.1 - 改进纠偏错误处理：区分"无需纠偏"和"纠偏失败"的日志
 // v4.0 - 添加 OpenRouter fallback：Husanai API 失败时自动切换到 OpenRouter
 // v3.0 - 添加二次纠偏层：基于文字图像相似性纠正OCR错误（如"天蒜"→"大蒜"）
 // v2.1 - JSON 解析失败时抛出带 AI 响应的错误，让用户看到智能提示
@@ -255,6 +256,8 @@ export async function recognizeReceipt(
       validated.corrections = correctionResult.corrections;
       validated.allOcrNames = correctionResult.allOcrNames;
       console.log('[收货单识别] 纠偏后的物料列表:', validated.items);
+    } else if (correctionResult.error) {
+      console.warn('[收货单识别] 纠偏失败:', correctionResult.error);
     } else {
       console.log('[收货单识别] 无需纠偏');
     }
