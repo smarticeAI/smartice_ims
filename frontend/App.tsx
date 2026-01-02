@@ -151,7 +151,7 @@ const AppContent: React.FC = () => {
                   <div className="text-white/70">加载数据中...</div>
                 </div>
               ) : (
-                <Dashboard logs={logs} />
+                <Dashboard logs={logs} restaurantId={user?.restaurant_id} />
               )
             )}
             {currentView === AppView.NEW_ENTRY && <EntryForm onSave={handleSaveEntry} userName={CURRENT_USER_NAME} userNickname={CURRENT_USER_NICKNAME} onOpenMenu={() => setSidebarOpen(true)} />}

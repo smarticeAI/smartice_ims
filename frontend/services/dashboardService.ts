@@ -1,7 +1,8 @@
 /**
  * 仪表板数据服务
+ * v4.0 - 统计卡片/供应商支持品类筛选，物品列表支持模糊搜索+最近采购优先
+ * v3.0 - 新增品类趋势、供应商统计、物品单价追踪、采购量趋势 API
  * v2.0 - 使用 restaurant_id 替代 store_id
- * v1.0 - 从 ims_material_price 表获取采购统计数据
  */
 
 import { supabase } from './supabaseClient';
@@ -10,9 +11,9 @@ import { DailyLog, ProcurementItem } from '../types';
 // ============ 类型定义 ============
 
 export interface DashboardStats {
-  totalSpend: number;      // 总采购额
-  totalItems: number;      // 入库数量
-  supplierCount: number;   // 供应商数
+  totalSpend: number;
+  totalItems: number;
+  supplierCount: number;
 }
 
 export interface DailyTrend {
@@ -20,15 +21,41 @@ export interface DailyTrend {
   cost: number;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+}
+
+export interface SupplierStats {
+  supplier: string;
+  total: number;
+}
+
+export interface ItemPriceTrend {
+  date: string;
+  price: number;
+  quantity: number;
+}
+
+export interface QuantityTrend {
+  date: string;
+  quantity: number;
+}
+
+export interface ItemInfo {
+  name: string;
+  unit: string;
+  lastPurchaseDate: string;
+}
+
 // ============ 数据获取 API ============
 
 /**
- * 获取仪表板统计数据
- * @param restaurantId 餐厅 ID（可选，不传则获取全部）
- * @param days 最近天数，默认 30 天
+ * 获取仪表板统计数据（支持品类筛选）
  */
 export async function getDashboardStats(
   restaurantId?: string,
+  categoryId?: number,
   days: number = 30
 ): Promise<DashboardStats> {
   const startDate = new Date();
@@ -40,9 +67,8 @@ export async function getDashboardStats(
     .select('total_amount, quantity, supplier_id, supplier_name')
     .gte('price_date', startDateStr);
 
-  if (restaurantId) {
-    query = query.eq('restaurant_id', restaurantId);
-  }
+  if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+  if (categoryId) query = query.eq('category_id', categoryId);
 
   const { data, error } = await query;
 
@@ -51,25 +77,16 @@ export async function getDashboardStats(
     throw error;
   }
 
-  // 计算统计数据
   const totalSpend = data?.reduce((sum, row) => sum + (Number(row.total_amount) || 0), 0) || 0;
   const totalItems = data?.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0) || 0;
 
-  // 统计供应商数（supplier_id 或 supplier_name 去重）
   const suppliers = new Set<string>();
   data?.forEach(row => {
-    if (row.supplier_id) {
-      suppliers.add(`id:${row.supplier_id}`);
-    } else if (row.supplier_name) {
-      suppliers.add(`name:${row.supplier_name}`);
-    }
+    if (row.supplier_id) suppliers.add(`id:${row.supplier_id}`);
+    else if (row.supplier_name) suppliers.add(`name:${row.supplier_name}`);
   });
 
-  return {
-    totalSpend,
-    totalItems,
-    supplierCount: suppliers.size,
-  };
+  return { totalSpend, totalItems, supplierCount: suppliers.size };
 }
 
 /**
@@ -200,4 +217,209 @@ export async function getPurchaseLogs(
   });
 
   return Array.from(logsMap.values());
+}
+
+// ============ 新增 API v3.0 ============
+
+/**
+ * 获取所有品类列表
+ */
+export async function getCategories(): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from('ims_category')
+    .select('id, name')
+    .eq('is_active', true)
+    .eq('category_type', 'material')
+    .order('sort_order');
+
+  if (error) {
+    console.error('获取品类列表失败:', error);
+    return [];
+  }
+
+  return data?.map(row => ({ id: row.id, name: row.name })) || [];
+}
+
+/**
+ * 按品类获取每日采购趋势
+ */
+export async function getCategoryTrend(
+  restaurantId?: string,
+  categoryId?: number,
+  days: number = 30
+): Promise<DailyTrend[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('ims_material_price')
+    .select('price_date, total_amount')
+    .gte('price_date', startDateStr)
+    .order('price_date', { ascending: true });
+
+  if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+  if (categoryId) query = query.eq('category_id', categoryId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('获取品类趋势失败:', error);
+    return [];
+  }
+
+  const dailyMap = new Map<string, number>();
+  data?.forEach(row => {
+    const date = row.price_date;
+    dailyMap.set(date, (dailyMap.get(date) || 0) + (Number(row.total_amount) || 0));
+  });
+
+  return Array.from(dailyMap.entries()).map(([date, cost]) => ({ date, cost }));
+}
+
+/**
+ * 获取供应商采购统计（支持品类筛选）
+ */
+export async function getSupplierStats(
+  restaurantId?: string,
+  categoryId?: number,
+  days: number = 30
+): Promise<SupplierStats[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('ims_material_price')
+    .select('supplier_name, total_amount')
+    .gte('price_date', startDateStr);
+
+  if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+  if (categoryId) query = query.eq('category_id', categoryId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('获取供应商统计失败:', error);
+    return [];
+  }
+
+  const supplierMap = new Map<string, number>();
+  data?.forEach(row => {
+    const supplier = row.supplier_name || '未知供应商';
+    supplierMap.set(supplier, (supplierMap.get(supplier) || 0) + (Number(row.total_amount) || 0));
+  });
+
+  return Array.from(supplierMap.entries())
+    .map(([supplier, total]) => ({ supplier, total }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/**
+ * 获取物品单价趋势
+ */
+export async function getItemPriceTrend(
+  itemName: string,
+  restaurantId?: string,
+  days: number = 30
+): Promise<ItemPriceTrend[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('ims_material_price')
+    .select('price_date, unit_price, quantity')
+    .eq('item_name', itemName)
+    .gte('price_date', startDateStr)
+    .order('price_date', { ascending: true });
+
+  if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('获取物品单价趋势失败:', error);
+    return [];
+  }
+
+  return data?.map(row => ({
+    date: row.price_date,
+    price: Number(row.unit_price) || 0,
+    quantity: Number(row.quantity) || 0,
+  })) || [];
+}
+
+/**
+ * 获取采购量趋势
+ */
+export async function getQuantityTrend(
+  restaurantId?: string,
+  categoryId?: number,
+  days: number = 30
+): Promise<QuantityTrend[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('ims_material_price')
+    .select('price_date, quantity')
+    .gte('price_date', startDateStr)
+    .order('price_date', { ascending: true });
+
+  if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+  if (categoryId) query = query.eq('category_id', categoryId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('获取采购量趋势失败:', error);
+    return [];
+  }
+
+  const dailyMap = new Map<string, number>();
+  data?.forEach(row => {
+    const date = row.price_date;
+    dailyMap.set(date, (dailyMap.get(date) || 0) + (Number(row.quantity) || 0));
+  });
+
+  return Array.from(dailyMap.entries()).map(([date, quantity]) => ({ date, quantity }));
+}
+
+/**
+ * 获取所有物品名称列表（模糊搜索+最近采购优先）
+ */
+export async function getItemNames(
+  restaurantId?: string,
+  days: number = 30
+): Promise<ItemInfo[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('ims_material_price')
+    .select('item_name, unit, price_date')
+    .gte('price_date', startDateStr)
+    .order('price_date', { ascending: false });
+
+  if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('获取物品列表失败:', error);
+    return [];
+  }
+
+  // 按物品名去重，保留最近采购日期和单位
+  const itemMap = new Map<string, ItemInfo>();
+  data?.forEach(row => {
+    if (row.item_name && !itemMap.has(row.item_name)) {
+      itemMap.set(row.item_name, {
+        name: row.item_name,
+        unit: row.unit || '',
+        lastPurchaseDate: row.price_date
+      });
+    }
+  });
+
+  // 按最近采购日期排序（已经是降序了）
+  return Array.from(itemMap.values());
 }

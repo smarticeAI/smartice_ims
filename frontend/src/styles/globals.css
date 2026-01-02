@@ -503,6 +503,15 @@
     height: 100%;
   }
 
+  /* 移除 Recharts 图表的焦点边框 */
+  .recharts-wrapper,
+  .recharts-wrapper svg,
+  .recharts-wrapper svg *,
+  .recharts-surface {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   body {
     /* 仅保留纯色背景作为 fallback，移除 background-attachment: fixed */
     /* 移动端 (iOS Safari) 不支持 background-attachment: fixed */
