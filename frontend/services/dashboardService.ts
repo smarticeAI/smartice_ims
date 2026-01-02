@@ -1,5 +1,6 @@
 /**
  * 仪表板数据服务
+ * v5.0 - 修复品类筛选：通过 ims_material 表关联 category_id（JOIN查询）
  * v4.0 - 统计卡片/供应商支持品类筛选，物品列表支持模糊搜索+最近采购优先
  * v3.0 - 新增品类趋势、供应商统计、物品单价追踪、采购量趋势 API
  * v2.0 - 使用 restaurant_id 替代 store_id
@@ -64,11 +65,11 @@ export async function getDashboardStats(
 
   let query = supabase
     .from('ims_material_price')
-    .select('total_amount, quantity, supplier_id, supplier_name')
+    .select('total_amount, quantity, supplier_id, supplier_name, material_id, ims_material!inner(category_id)')
     .gte('price_date', startDateStr);
 
   if (restaurantId) query = query.eq('restaurant_id', restaurantId);
-  if (categoryId) query = query.eq('category_id', categoryId);
+  if (categoryId) query = query.eq('ims_material.category_id', categoryId);
 
   const { data, error } = await query;
 
@@ -254,12 +255,12 @@ export async function getCategoryTrend(
 
   let query = supabase
     .from('ims_material_price')
-    .select('price_date, total_amount')
+    .select('price_date, total_amount, material_id, ims_material!inner(category_id)')
     .gte('price_date', startDateStr)
     .order('price_date', { ascending: true });
 
   if (restaurantId) query = query.eq('restaurant_id', restaurantId);
-  if (categoryId) query = query.eq('category_id', categoryId);
+  if (categoryId) query = query.eq('ims_material.category_id', categoryId);
 
   const { data, error } = await query;
   if (error) {
@@ -290,11 +291,11 @@ export async function getSupplierStats(
 
   let query = supabase
     .from('ims_material_price')
-    .select('supplier_name, total_amount')
+    .select('supplier_name, total_amount, material_id, ims_material!inner(category_id)')
     .gte('price_date', startDateStr);
 
   if (restaurantId) query = query.eq('restaurant_id', restaurantId);
-  if (categoryId) query = query.eq('category_id', categoryId);
+  if (categoryId) query = query.eq('ims_material.category_id', categoryId);
 
   const { data, error } = await query;
   if (error) {
@@ -361,12 +362,12 @@ export async function getQuantityTrend(
 
   let query = supabase
     .from('ims_material_price')
-    .select('price_date, quantity')
+    .select('price_date, quantity, material_id, ims_material!inner(category_id)')
     .gte('price_date', startDateStr)
     .order('price_date', { ascending: true });
 
   if (restaurantId) query = query.eq('restaurant_id', restaurantId);
-  if (categoryId) query = query.eq('category_id', categoryId);
+  if (categoryId) query = query.eq('ims_material.category_id', categoryId);
 
   const { data, error } = await query;
   if (error) {

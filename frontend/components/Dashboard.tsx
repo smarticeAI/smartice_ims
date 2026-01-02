@@ -1,16 +1,17 @@
 /**
  * Dashboard 仪表板组件
+ * v4.0 - UI优化：时间筛选循环切换、品类可搜索、统计数字居中、图表标签中文化
  * v3.2 - 修复图表UI：饼图文字响应式、Tooltip白色字体、移除highlight边框、物品追踪改用折线图
  * v3.1 - 物品板块时间筛选独立，不影响大类板块
  * v3.0 - 大类板块受品类筛选，物品板块独立，可输入搜索，单价/采购量切换
  */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DailyLog } from '../types';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell
 } from 'recharts';
-import { GlassCard } from './ui';
+import { GlassCard, AutocompleteInput, AutocompleteOption } from './ui';
 import {
   getCategories, getCategoryTrend, getSupplierStats, getDashboardStats,
   getItemPriceTrend, getQuantityTrend, getItemNames,
@@ -23,13 +24,15 @@ interface DashboardProps {
 }
 
 const COLORS = ['#5BA3C0', '#6B9E8A', '#E8A54C', '#E85A4F', '#9B7EDE', '#4ECDC4'];
-const TIME_OPTIONS = [{ label: '7天', value: 7 }, { label: '30天', value: 30 }, { label: '90天', value: 90 }];
+// 时间选项循环顺序：30天→90天→7天
+const TIME_CYCLE = [30, 90, 7];
 
 export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
   // 全局筛选
   const [days, setDays] = useState(30);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
+  const [categorySearch, setCategorySearch] = useState('');
 
   // 大类板块数据
   const [stats, setStats] = useState<DashboardStats>({ totalSpend: 0, totalItems: 0, supplierCount: 0 });
@@ -93,8 +96,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
   // 供应商饼图数据（截取前4字符避免文字碰撞）
   const pieData = supplierStats.slice(0, 5).map(s => ({ name: s.supplier, shortName: s.supplier.slice(0, 4), value: s.total }));
 
+  // 时间循环切换
+  const cycleDays = useCallback(() => {
+    const currentIndex = TIME_CYCLE.indexOf(days);
+    const nextIndex = (currentIndex + 1) % TIME_CYCLE.length;
+    setDays(TIME_CYCLE[nextIndex]);
+  }, [days]);
+
+  // 品类搜索函数
+  const searchCategories = useCallback(async (query: string): Promise<AutocompleteOption[]> => {
+    const q = query.toLowerCase();
+    return categories
+      .filter(c => c.name.toLowerCase().includes(q))
+      .map(c => ({ id: c.id, label: c.name, value: c.name }));
+  }, [categories]);
+
+  // 品类选择回调
+  const handleCategorySelect = useCallback((option: AutocompleteOption) => {
+    setSelectedCategory(option.id as number);
+    setCategorySearch(option.value);
+  }, []);
+
+  // 清空品类筛选
+  const clearCategoryFilter = useCallback(() => {
+    setSelectedCategory(undefined);
+    setCategorySearch('');
+  }, []);
+
   // 样式
-  const selectClass = "bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40";
   const segmentClass = (active: boolean) => `px-3 py-1.5 text-xs rounded-lg transition-all ${active ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'}`;
 
   // 空状态组件
@@ -117,36 +146,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
           <p className="text-sm text-secondary">采购数据分析</p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          {/* 时间筛选 */}
-          <div className="flex bg-white/10 rounded-xl p-1">
-            {TIME_OPTIONS.map(t => (
-              <button key={t.value} onClick={() => setDays(t.value)}
-                className={segmentClass(days === t.value)}>{t.label}</button>
-            ))}
+          {/* 时间筛选 - 循环切换按钮 */}
+          <button onClick={cycleDays} className="btn-glass text-sm py-2 px-4">
+            <span className="text-white">{days}天</span>
+          </button>
+          {/* 品类筛选 - 可搜索输入 */}
+          <div className="relative w-28">
+            <AutocompleteInput
+              value={categorySearch}
+              onChange={setCategorySearch}
+              placeholder="全部品类"
+              searchFn={searchCategories}
+              onSelect={handleCategorySelect}
+              variant="inline"
+              showDropdownButton
+              minChars={0}
+              inputClassName="text-sm text-white placeholder:text-white/60"
+            />
+            {selectedCategory && (
+              <button onClick={clearCategoryFilter} className="absolute right-6 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
-          {/* 品类筛选 */}
-          <select value={selectedCategory || ''} onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : undefined)}
-            className={selectClass}>
-            <option value="">全部品类</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
         </div>
       </div>
 
       {/* ═══════════ 大类板块 ═══════════ */}
       <div className="text-xs text-white/40 uppercase tracking-wider">大类统计</div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - 数字居中 */}
       <div className="grid grid-cols-3 gap-2 md:gap-3">
-        <GlassCard padding="sm" className="flex flex-col justify-between min-h-[70px] md:min-h-[80px]">
+        <GlassCard padding="sm" className="flex flex-col items-center justify-center min-h-[70px] md:min-h-[80px]">
           <span className="text-xs md:text-sm text-white/70">总采购额</span>
           <p className="text-base md:text-2xl font-light text-white">¥{formatNumber(stats.totalSpend)}</p>
         </GlassCard>
-        <GlassCard padding="sm" className="flex flex-col justify-between min-h-[70px] md:min-h-[80px]">
+        <GlassCard padding="sm" className="flex flex-col items-center justify-center min-h-[70px] md:min-h-[80px]">
           <span className="text-xs md:text-sm text-white/70">入库数量</span>
           <p className="text-base md:text-2xl font-light text-white">{formatNumber(stats.totalItems)}</p>
         </GlassCard>
-        <GlassCard padding="sm" className="flex flex-col justify-between min-h-[70px] md:min-h-[80px]">
+        <GlassCard padding="sm" className="flex flex-col items-center justify-center min-h-[70px] md:min-h-[80px]">
           <span className="text-xs md:text-sm text-white/70">供应商数</span>
           <p className="text-base md:text-2xl font-light text-white">{stats.supplierCount}</p>
         </GlassCard>
@@ -170,8 +211,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={formatDate} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={(v) => `¥${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`} width={35} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(25,25,30,0.95)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#FFF' }}
-                  itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }} />
-                <Area type="monotone" dataKey="cost" stroke="#5BA3C0" strokeWidth={2} fill="url(#colorCost)" style={{ outline: 'none' }} />
+                  itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }}
+                  formatter={(v: number) => [`¥${v.toLocaleString()}`, '采购额']} />
+                <Area type="monotone" dataKey="cost" name="采购额" stroke="#5BA3C0" strokeWidth={2} fill="url(#colorCost)" style={{ outline: 'none' }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -215,8 +257,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={formatDate} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} width={35} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(25,25,30,0.95)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#FFF' }}
-                    itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }} />
-                  <Bar dataKey="quantity" fill="#6B9E8A" radius={[4, 4, 0, 0]} style={{ outline: 'none' }} />
+                    itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }}
+                    formatter={(v: number) => [v.toLocaleString(), '采购量']} />
+                  <Bar dataKey="quantity" name="采购量" fill="#6B9E8A" radius={[4, 4, 0, 0]} style={{ outline: 'none' }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -227,12 +270,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
       {/* ═══════════ 物品板块 ═══════════ */}
       <div className="flex items-center justify-between mt-2">
         <div className="text-xs text-white/40 uppercase tracking-wider">物品追踪</div>
-        <div className="flex bg-white/10 rounded-xl p-1">
-          {TIME_OPTIONS.map(t => (
-            <button key={t.value} onClick={() => setItemDays(t.value)}
-              className={segmentClass(itemDays === t.value)}>{t.label}</button>
-          ))}
-        </div>
+        <button onClick={() => {
+          const idx = TIME_CYCLE.indexOf(itemDays);
+          setItemDays(TIME_CYCLE[(idx + 1) % TIME_CYCLE.length]);
+        }} className="btn-glass text-xs py-1.5 px-3">
+          <span className="text-white">{itemDays}天</span>
+        </button>
       </div>
 
       <GlassCard padding="md" className="min-h-[220px] flex flex-col">
@@ -281,16 +324,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
                   <YAxis dataKey="price" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={(v) => `¥${v}`} width={35} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(25,25,30,0.95)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#FFF' }}
                     itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }}
-                    formatter={(v: number, name: string) => [name === 'price' ? `¥${v}` : v, name === 'price' ? '单价' : '数量']} />
-                  <Line type="monotone" dataKey="price" stroke="#E8A54C" strokeWidth={2} dot={{ fill: '#E8A54C', r: 4 }} style={{ outline: 'none' }} />
+                    formatter={(v: number) => [`¥${v}`, '单价']} />
+                  <Line type="monotone" dataKey="price" name="单价" stroke="#E8A54C" strokeWidth={2} dot={{ fill: '#E8A54C', r: 4 }} style={{ outline: 'none' }} />
                 </LineChart>
               ) : (
                 <BarChart data={itemTrend} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} style={{ outline: 'none' }}>
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={formatDate} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} width={35} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(25,25,30,0.95)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#FFF' }}
-                    itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }} />
-                  <Bar dataKey="quantity" fill="#E8A54C" radius={[4, 4, 0, 0]} style={{ outline: 'none' }} />
+                    itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }}
+                    formatter={(v: number) => [v.toLocaleString(), '采购量']} />
+                  <Bar dataKey="quantity" name="采购量" fill="#E8A54C" radius={[4, 4, 0, 0]} style={{ outline: 'none' }} />
                 </BarChart>
               )}
             </ResponsiveContainer>
