@@ -1,5 +1,6 @@
 /**
  * Dashboard 仪表板组件
+ * v4.1 - 修复品类下拉框：添加下拉icon、按门店过滤品类、去重
  * v4.0 - UI优化：时间筛选循环切换、品类可搜索、统计数字居中、图表标签中文化
  * v3.2 - 修复图表UI：饼图文字响应式、Tooltip白色字体、移除highlight边框、物品追踪改用折线图
  * v3.1 - 物品板块时间筛选独立，不影响大类板块
@@ -49,10 +50,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
   const [itemViewMode, setItemViewMode] = useState<'price' | 'quantity'>('price');
   const [showItemDropdown, setShowItemDropdown] = useState(false);
 
-  // 加载品类列表
+  // 加载品类列表（按门店过滤）
   useEffect(() => {
-    getCategories().then(setCategories);
-  }, []);
+    getCategories(restaurantId).then(setCategories);
+  }, [restaurantId]);
 
   // 加载物品列表（独立时间筛选）
   useEffect(() => {
@@ -150,21 +151,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
           <button onClick={cycleDays} className="btn-glass text-sm py-2 px-4">
             <span className="text-white">{days}天</span>
           </button>
-          {/* 品类筛选 - 可搜索输入 */}
-          <div className="relative w-28">
+          {/* 品类筛选 - 可搜索输入 + 下拉按钮 */}
+          <div className="relative">
             <AutocompleteInput
               value={categorySearch}
               onChange={setCategorySearch}
               placeholder="全部品类"
               searchFn={searchCategories}
               onSelect={handleCategorySelect}
-              variant="inline"
               showDropdownButton
               minChars={0}
-              inputClassName="text-sm text-white placeholder:text-white/60"
+              className="w-28"
+              inputClassName="text-sm text-white placeholder:text-white/60 py-2 px-3 !pr-10"
             />
             {selectedCategory && (
-              <button onClick={clearCategoryFilter} className="absolute right-6 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
+              <button onClick={clearCategoryFilter} className="absolute right-8 top-1/2 -translate-y-1/2 text-white/40 hover:text-white z-10">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>

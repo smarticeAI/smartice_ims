@@ -1,5 +1,6 @@
 /**
  * 仪表板数据服务
+ * v6.0 - 品类列表按门店过滤（只显示有采购记录的品类）+ 按名称去重
  * v5.0 - 修复品类筛选：通过 ims_material 表关联 category_id（JOIN查询）
  * v4.0 - 统计卡片/供应商支持品类筛选，物品列表支持模糊搜索+最近采购优先
  * v3.0 - 新增品类趋势、供应商统计、物品单价追踪、采购量趋势 API
@@ -223,9 +224,34 @@ export async function getPurchaseLogs(
 // ============ 新增 API v3.0 ============
 
 /**
- * 获取所有品类列表
+ * 获取品类列表（按门店过滤，只显示有采购记录的品类，按名称去重）
  */
-export async function getCategories(): Promise<Category[]> {
+export async function getCategories(restaurantId?: string): Promise<Category[]> {
+  // 如果有门店ID，只返回该门店有采购记录的品类
+  if (restaurantId) {
+    const { data, error } = await supabase
+      .from('ims_material_price')
+      .select('material_id, ims_material!inner(category_id, ims_category!inner(id, name))')
+      .eq('restaurant_id', restaurantId);
+
+    if (error) {
+      console.error('获取品类列表失败:', error);
+      return [];
+    }
+
+    // 按名称去重（优先保留较小的id）
+    const categoryMap = new Map<string, Category>();
+    data?.forEach((row: any) => {
+      const cat = row.ims_material?.ims_category;
+      if (cat && cat.name && !categoryMap.has(cat.name)) {
+        categoryMap.set(cat.name, { id: cat.id, name: cat.name });
+      }
+    });
+
+    return Array.from(categoryMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+  }
+
+  // 无门店ID时，返回全部品类（按名称去重）
   const { data, error } = await supabase
     .from('ims_category')
     .select('id, name')
@@ -238,7 +264,15 @@ export async function getCategories(): Promise<Category[]> {
     return [];
   }
 
-  return data?.map(row => ({ id: row.id, name: row.name })) || [];
+  // 按名称去重
+  const categoryMap = new Map<string, Category>();
+  data?.forEach(row => {
+    if (row.name && !categoryMap.has(row.name)) {
+      categoryMap.set(row.name, { id: row.id, name: row.name });
+    }
+  });
+
+  return Array.from(categoryMap.values());
 }
 
 /**
