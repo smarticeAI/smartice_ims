@@ -1,8 +1,9 @@
 /**
  * 自动完成输入框组件
- * v4.3 - 修复 onBlurCustom 使用闭包旧值问题，改用 ref 获取最新值
+ * v4.4 - 新增外部 loading 属性，支持父组件控制加载状态显示
  *
  * 变更历史：
+ * - v4.4: 新增 loading 属性，支持外部控制加载状态（用于Dashboard等场景）
  * - v4.3: 修复 onBlurCustom 在 setTimeout 中使用闭包旧值的 bug，改用 valueRef 获取最新值
  * - v4.2: 新增 onBlurCustom 属性，支持自定义 blur 回调（用于物料名称验证）
  * - v4.1: 下拉框打开时给容器添加 isolate + z-[9999]，
@@ -76,6 +77,8 @@ export interface AutocompleteInputProps {
   strictSelection?: boolean;
   /** v4.2: 自定义 onBlur 回调（在内部 blur 处理之后执行） */
   onBlurCustom?: (value: string) => void;
+  /** v4.4: 外部控制的加载状态（优先于内部 isLoading） */
+  loading?: boolean;
 }
 
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
@@ -97,6 +100,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   getAllOptionsFn,
   strictSelection = false,
   onBlurCustom,
+  loading: externalLoading,
 }) => {
   // 内部状态
   const [isOpen, setIsOpen] = useState(false);
@@ -429,7 +433,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
             disabled={disabled}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors disabled:opacity-40"
           >
-            {isLoading ? (
+            {(externalLoading || isLoading) ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <svg
@@ -456,7 +460,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
             disabled={disabled}
             className="ml-1 w-5 h-5 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors disabled:opacity-40"
           >
-            {isLoading ? (
+            {(externalLoading || isLoading) ? (
               <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <svg
@@ -475,7 +479,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         )}
 
         {/* 加载指示器（仅 default 变体且无下拉按钮时显示） */}
-        {isLoading && variant === 'default' && !showDropdownButton && (
+        {(externalLoading || isLoading) && variant === 'default' && !showDropdownButton && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>

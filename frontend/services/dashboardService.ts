@@ -1,5 +1,7 @@
 /**
  * 仪表板数据服务
+ * v8.0 - 品类列表按餐厅品牌过滤（与库存录入一致），修复干货/干杂/干杂调味品重复问题
+ * v7.0 - 新增 getItemSupplierStats（单个物品的供应商采购占比）
  * v6.0 - 品类列表按门店过滤（只显示有采购记录的品类）+ 按名称去重
  * v5.0 - 修复品类筛选：通过 ims_material 表关联 category_id（JOIN查询）
  * v4.0 - 统计卡片/供应商支持品类筛选，物品列表支持模糊搜索+最近采购优先
@@ -224,40 +226,35 @@ export async function getPurchaseLogs(
 // ============ 新增 API v3.0 ============
 
 /**
- * 获取品类列表（按门店过滤，只显示有采购记录的品类，按名称去重）
+ * 获取品类列表（按门店品牌过滤，只显示该品牌的分类）
+ * v4.1 - 修复：按餐厅品牌过滤分类，与库存录入保持一致
  */
 export async function getCategories(restaurantId?: string): Promise<Category[]> {
-  // 如果有门店ID，只返回该门店有采购记录的品类
+  let brandId: number | null = null;
+
+  // 如果有门店ID，先查询该门店的品牌
   if (restaurantId) {
-    const { data, error } = await supabase
-      .from('ims_material_price')
-      .select('material_id, ims_material!inner(category_id, ims_category!inner(id, name))')
-      .eq('restaurant_id', restaurantId);
-
-    if (error) {
-      console.error('获取品类列表失败:', error);
-      return [];
-    }
-
-    // 按名称去重（优先保留较小的id）
-    const categoryMap = new Map<string, Category>();
-    data?.forEach((row: any) => {
-      const cat = row.ims_material?.ims_category;
-      if (cat && cat.name && !categoryMap.has(cat.name)) {
-        categoryMap.set(cat.name, { id: cat.id, name: cat.name });
-      }
-    });
-
-    return Array.from(categoryMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+    const { data: restaurant } = await supabase
+      .from('master_restaurant')
+      .select('brand_id')
+      .eq('id', restaurantId)
+      .single();
+    brandId = restaurant?.brand_id || null;
   }
 
-  // 无门店ID时，返回全部品类（按名称去重）
-  const { data, error } = await supabase
+  // 查询分类（按品牌过滤）
+  let query = supabase
     .from('ims_category')
     .select('id, name')
     .eq('is_active', true)
-    .eq('category_type', 'material')
-    .order('sort_order');
+    .eq('category_type', 'material');
+
+  // 品牌过滤：本品牌 + 通用(id=3) + NULL
+  if (brandId) {
+    query = query.or(`brand_id.eq.${brandId},brand_id.eq.3,brand_id.is.null`);
+  }
+
+  const { data, error } = await query.order('sort_order');
 
   if (error) {
     console.error('获取品类列表失败:', error);
@@ -457,4 +454,41 @@ export async function getItemNames(
 
   // 按最近采购日期排序（已经是降序了）
   return Array.from(itemMap.values());
+}
+
+/**
+ * 获取单个物品的供应商采购统计
+ */
+export async function getItemSupplierStats(
+  itemName: string,
+  restaurantId?: string,
+  days: number = 30
+): Promise<SupplierStats[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('ims_material_price')
+    .select('supplier_name, total_amount')
+    .eq('item_name', itemName)
+    .gte('price_date', startDateStr);
+
+  if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('获取物品供应商统计失败:', error);
+    return [];
+  }
+
+  const supplierMap = new Map<string, number>();
+  data?.forEach(row => {
+    const supplier = row.supplier_name || '未知供应商';
+    supplierMap.set(supplier, (supplierMap.get(supplier) || 0) + (Number(row.total_amount) || 0));
+  });
+
+  return Array.from(supplierMap.entries())
+    .map(([supplier, total]) => ({ supplier, total }))
+    .sort((a, b) => b.total - a.total);
 }
