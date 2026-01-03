@@ -371,7 +371,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
               {itemViewMode === 'price' ? (
                 <LineChart data={itemTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }} style={{ outline: 'none' }}>
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={formatDate} />
-                  <YAxis dataKey="price" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={(v) => `¥${v}`} width={35} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={(v) => `¥${v}`} width={45} domain={['auto', 'auto']} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(25,25,30,0.95)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#FFF' }}
                     itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }}
                     formatter={(v: number) => [`¥${v}`, '单价']} />
@@ -380,7 +380,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
               ) : (
                 <BarChart data={itemTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }} style={{ outline: 'none', cursor: 'default' }}>
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} tickFormatter={formatDate} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} width={35} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} width={45} domain={['auto', 'auto']} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(25,25,30,0.95)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#FFF' }}
                     itemStyle={{ color: '#FFF' }} labelStyle={{ color: '#FFF' }}
                     formatter={(v: number) => [v.toLocaleString(), '数量']} />
