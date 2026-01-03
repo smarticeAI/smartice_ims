@@ -1,20 +1,13 @@
 /**
  * Dashboard 仪表板组件
+ * v4.5 - 物品选择添加模糊搜索功能，显示全部物品
  * v4.4 - 物品选择改为按钮下拉样式，与品类筛选统一
  * v4.3 - 品类筛选改为自定义下拉框，统一与物品追踪下拉框样式
- * v4.2 - 修复图表容器高度问题，使用固定高度替代min-h
  *
  * 主要变更：
+ * - v4.5: 物品下拉框添加搜索输入框，支持模糊搜索全部物品
  * - v4.4: 物品选择使用按钮下拉样式，移除搜索输入框，统一UI风格
  * - v4.3: 品类筛选使用自定义下拉框，高度与日期选择按钮一致(34px)
- * - 合并支出趋势和采购量趋势为一个卡片（切换按钮）
- * - 统一大类统计和物品追踪的布局（标题左、控件右上）
- * - 搜索物品UI改进（参考AutocompleteInput：手动输入+下拉+删除+loading）
- * - 默认90天，预加载90天数据，切换7/30天秒切（从缓存筛选）
- * - 去掉柱状图highlight（cursor: default）
- * - 图表英文改中文（cost→金额, quantity→数量, price→单价）
- * - 大类统计卡片文字和数字居中
- * - 修复品类重复（getCategories传restaurantId）
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { DailyLog } from '../types';
@@ -59,6 +52,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
   const [itemViewMode, setItemViewMode] = useState<'price' | 'quantity'>('price');
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [itemSearchQuery, setItemSearchQuery] = useState('');
 
   // 加载品类列表（修复：传递restaurantId）
   useEffect(() => {
@@ -129,6 +123,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
     cutoffDate.setDate(cutoffDate.getDate() - days);
     return itemTrend90.filter(d => new Date(d.date) >= cutoffDate);
   }, [itemTrend90, days]);
+
+  // 模糊搜索过滤物品列表
+  const filteredItems = useMemo(() => {
+    if (!itemSearchQuery.trim()) return itemList90;
+    const query = itemSearchQuery.toLowerCase();
+    return itemList90.filter(item => item.name.toLowerCase().includes(query));
+  }, [itemList90, itemSearchQuery]);
 
   // 供应商饼图数据
   const pieData = supplierStats.slice(0, 5).map(s => ({
@@ -333,28 +334,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
             {/* 下拉框 */}
             {showItemDropdown && (
               <div
-                className="absolute left-0 z-[9999] overflow-y-auto py-2 rounded-[20px] border border-white/12"
+                className="absolute left-0 z-[9999] overflow-hidden py-2 rounded-[20px] border border-white/12"
                 style={{
                   top: '100%',
                   marginTop: '4px',
-                  minWidth: '10rem',
-                  maxHeight: '15rem',
+                  minWidth: '12rem',
+                  maxHeight: '18rem',
                   background: 'linear-gradient(145deg, rgba(25,25,30,0.98) 0%, rgba(25,25,30,0.95) 100%)',
                   backdropFilter: 'blur(48px) saturate(180%)',
                   WebkitBackdropFilter: 'blur(48px) saturate(180%)',
                   boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4)',
                 }}
               >
-                {itemList90.slice(0, 20).map(item => (
-                  <button
-                    key={item.name}
-                    type="button"
-                    onClick={() => { setSelectedItem(item); setShowItemDropdown(false); }}
-                    className={`w-full px-4 py-2.5 text-left transition-colors text-sm ${selectedItem?.name === item.name ? 'text-white bg-white/10' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
-                  >
-                    {item.name}
-                  </button>
-                ))}
+                {/* 搜索输入框 */}
+                <div className="px-3 pb-2 border-b border-white/10">
+                  <input
+                    type="text"
+                    value={itemSearchQuery}
+                    onChange={(e) => setItemSearchQuery(e.target.value)}
+                    placeholder="搜索物品..."
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-sm text-white placeholder-white/40 focus:outline-none focus:border-white/40"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                {/* 物品列表 */}
+                <div className="overflow-y-auto" style={{ maxHeight: '12rem' }}>
+                  {filteredItems.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-white/50 text-center">无匹配物品</div>
+                  ) : (
+                    filteredItems.map(item => (
+                      <button
+                        key={item.name}
+                        type="button"
+                        onClick={() => { setSelectedItem(item); setShowItemDropdown(false); setItemSearchQuery(''); }}
+                        className={`w-full px-4 py-2.5 text-left transition-colors text-sm ${selectedItem?.name === item.name ? 'text-white bg-white/10' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                      >
+                        {item.name}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -394,7 +414,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ logs, restaurantId }) => {
 
       {/* 点击外部关闭下拉 */}
       {(showItemDropdown || showCategoryDropdown) && (
-        <div className="fixed inset-0 z-[9998]" onClick={() => { setShowItemDropdown(false); setShowCategoryDropdown(false); }} />
+        <div className="fixed inset-0 z-[9998]" onClick={() => { setShowItemDropdown(false); setShowCategoryDropdown(false); setItemSearchQuery(''); }} />
       )}
     </div>
   );
